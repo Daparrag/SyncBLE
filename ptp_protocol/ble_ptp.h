@@ -61,6 +61,7 @@ typedef struct
         uint8_t seq_number;
         uint8_t peer_ready_to_receive;
         ptp_clock_st timers;
+        struct timer remain_sync_time;
 }ptp_status_table;
 
 
@@ -102,6 +103,10 @@ uint8_t create_ptp_packet_hdr(uint16_t chndler,
                               ptp_hdr * hdr,uint8_t *buff);
 
 
+ptp_status_t Init_ptp_application(uint8_t ptp_dv_role, 
+                                  app_profile_t * profile);
+
+/***********functions************/
 tBleStatus ptp_init_server();
 void ptp_init_client();
 void ptp_Dispatch(ptp_fsm * ptp_ins);

@@ -88,9 +88,9 @@ void clock_Init()
  * @param  None
  * @retval tClockTime
  */
-tClockTime Clock_Time(void)
+tClockTime clock_time(void)
 {	
-  PRINTDEBUG("Current Clock: %d ticks and %d seconds \n", current_clock, current_seconds);
+ // PRINTDEBUG("Current Clock: %d ticks and %d seconds \n", current_clock, current_seconds);
   return current_clock;
   
 }
@@ -106,7 +106,7 @@ tClockTime Clock_Time(void)
  * @param  None
  * @retval tClockTime in seconds
  */
- tClockTime SClock_Time(void)
+ tClockTime sclock_Time(void)
 {
 	
   return current_seconds;
@@ -118,9 +118,9 @@ tClockTime Clock_Time(void)
  * @retval tClockTime in seconds
  */
  
-void Clock_Wait(uint32_t i)
+void clock_wait(uint32_t i)
 {
-  HAL_Delay(i);
+  
 }
 
   /**
@@ -129,7 +129,7 @@ void Clock_Wait(uint32_t i)
  * @retval NONE
  */
 
-void Clock_reset(void)
+void clock_reset(void)
 {
   current_clock=0;
   current_seconds=0;

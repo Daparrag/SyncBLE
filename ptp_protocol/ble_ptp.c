@@ -7,6 +7,7 @@
 #include "ble_ptp.h"
 #include "app_ble.h"
 #include "ble_firmware.h"
+#include "common_tables.h"
 
 #ifndef COPY_VAR
 #define COPY_VAR(source,dest) (memcpy((source),(dest),sizeof(dest)))
@@ -17,6 +18,7 @@
 /**************************Service Variables*************************/
 static uint8_t ptp_role;
 static uint8_t max_number_entries;
+static uint8_t local_notify_enable_flag=0;
 
 
 #if (ROLE==GAP_CENTRAL_ROLE)
@@ -48,6 +50,9 @@ static uint8_t get_sequence_id(uint8_t type, uint16_t cHandler);
 static ptp_status_table * get_status_table(uint16_t Chandler);
 static uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time_cpy);
 static uint8_t ptp_attribute_modified_CB(uint16_t chandler, uint16_t attrhandler, uint8_t data_length, uint8_t *att_data, tClockTime arval_time);
+static void ptp_server_process(ptp_status_table * st_sync_node);
+static void ptp_enable_notify(uint16_t chandler);
+static void ptp_client_process(ptp_status_table * st_sync_node);
 /*******************************************************************************/
 
 
@@ -84,9 +89,9 @@ static void init_ptp_profile(app_profile_t * profile){
    COPY_VAR(bleptp_rx_att.CharUUID,ptp_RXchar_uuid);
   bleptp_rx_att.charUuidType = UUID_TYPE_128;
   bleptp_rx_att.charValueLen = 20;
-  bleptp_rx_att.charProperties = CHAR_PROP_NOTIFY;
+  bleptp_rx_att.charProperties = CHAR_PROP_WRITE | CHAR_PROP_WRITE_WITHOUT_RESP;
   bleptp_rx_att.secPermissions = ATTR_PERMISSION_NONE;
-  bleptp_rx_att.gattEvtMask = GATT_DONT_NOTIFY_EVENTS;
+  bleptp_rx_att.gattEvtMask = GATT_NOTIFY_ATTRIBUTE_WRITE;
   bleptp_rx_att.encryKeySize=16;
   bleptp_rx_att.isVariable=1;
   /*copy and associate the RX_attribute to a service*/
@@ -96,23 +101,7 @@ static void init_ptp_profile(app_profile_t * profile){
 
 
 
-/*
-void ptp_Dispatch(ptp_fsm * ptp_inst){
-	switch(ptp_inst->C_State){
-		case INIT:
-		//slave turn on//
-		//init service, discovery master clock, create a sync, follow req//
 
-		case UNSYNC:
-		//slave requiere re-sync //
-		case SYNC:
-		//slave already sync//
-		case WAIT_RESP:
-		//Slave wait for delay resp//
-		case PENDING_REQ:
-		//Slave have to req delay//
-	}
-}*/
 
 void ptp_error_handler(void){
 	
@@ -373,6 +362,8 @@ uint8_t ptp_attribute_modified_CB(uint16_t chandler, uint16_t attrhandler, uint8
                 {
                   Osal_MemCpy(&st->timers.t3,att_data+ret,sizeof(tClockTime));
                   /*here the ptp_client could update the delay slave-to-master*/
+                  st->dv_state=PTP_SYNC;
+                  /*set_sync_time*/
                 }
             }
             break;
@@ -381,13 +372,12 @@ uint8_t ptp_attribute_modified_CB(uint16_t chandler, uint16_t attrhandler, uint8
       }
       
     }
-
+return 1;
 }
 
 uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time_cpy){
   tBleStatus res_ble;
   uint8_t ret;
-  uint8_t i;
   uint8_t tx_buffer[8];
   ptp_hdr rptp_hdr;
   
@@ -415,12 +405,37 @@ uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time
   } 
   else {
     
-    res_ble = aci_update_char_value(bleptp_service.ServiceHandle,bleptp_tx_att.CharHandle,0,8,tx_buffer);
+    res_ble = aci_gatt_update_char_value(bleptp_service.ServiceHandle,bleptp_tx_att.CharHandle,0,8,tx_buffer);
   } 
   if(res_ble!= BLE_STATUS_SUCCESS)return 0;
  
   return ret;
   
+}
+
+void ptp_enable_notify(uint16_t chandler){
+  uint8_t notify_enable_data [] = {0x01,0x00};
+  struct timer t;
+  Timer_Set(&t, CLOCK_SECOND*10);
+  
+  while(aci_gatt_write_charac_descriptor(chandler,bleptp_tx_att.Associate_CharHandler+2,2,notify_enable_data)==BLE_STATUS_NOT_ALLOWED)
+  {
+    if(Timer_Expired(&t))return;/*error*/
+  }
+local_notify_enable_flag=1;
+}
+
+
+void ptp_disable_notify(uint16_t chandler){
+uint8_t notify_disable_data [] = {0x00,0x00};
+struct timer t;
+Timer_Set(&t, CLOCK_SECOND*10);
+while(aci_gatt_write_charac_descriptor(chandler,bleptp_tx_att.Associate_CharHandler+2,2,notify_disable_data)==BLE_STATUS_NOT_ALLOWED)
+  {
+    if(Timer_Expired(&t))return;/*error*/
+  }
+
+local_notify_enable_flag=0;
 }
 
 
@@ -434,20 +449,26 @@ void GATT_GET_Notification_CB(uint16_t chandler, uint16_t attrhandler, uint8_t d
    if(attrhandler!=bleptp_tx_att.Associate_CharHandler+1)return;
     st = get_status_table(chandler); 
     ret = ptp_packet_hdr_parse(att_data, data_length, &rptp_hdr);
+    if(ret==0)while(1);/*error occur*/
     
     if(st->dv_state==PTP_UNSYNC && 
        ptp_role==PTP_SERVER && 
          st->ptp_state==PTP_WAIT_RESP)
     {
       ptp_send_ptp_packet(chandler,DELAY_RSP,&arval_time);
+      
     }
 }
 
 
+
+
+
 void ptp_service_process(){
   /*get_event :o*/
+  uint8_t i;
   event_t * event;
-  
+  event = (event_t *)HCI_Get_Event_CB();
   if(event!=NULL){
     switch(event->event_type)
     {
@@ -481,8 +502,13 @@ void ptp_service_process(){
   
   if(network_get_status())
   {
-    for()
-      if(ptp_role==PTP_SERVER) ptp_server_process();
+    for(i=0; i < max_number_entries; i++)
+    {
+      
+      if(ptp_role==PTP_SERVER) ptp_server_process(&PTPStatus[i]);
+      if(ptp_role==PTP_CLIENT) ptp_client_process(&PTPStatus[i]);
+    }
+      
   }
   
   /*for each connection :o*/
@@ -491,7 +517,72 @@ void ptp_service_process(){
 
 void ptp_server_process(ptp_status_table * st_sync_node)
 {
-    /*process events is something to process*/
+    /*ptp server process*/
+  uint8_t ret;
+  
+  switch(st_sync_node->dv_state)
+  {     
+    case PTP_UNSYNC:
+    {
+      switch(st_sync_node->ptp_state)
+      {
+        case PTP_UNITIALIZED:
+        {
+          /*this  state is and error*/
+        }
+        break;
+        
+        case PTP_INIT:
+        {
+          
+            ret = ptp_send_ptp_packet(st_sync_node->Chandler,SYNC,&st_sync_node->timers.t0);
+            if(ret==0)while(1);/*and error occur*/
+            ret = ptp_send_ptp_packet (st_sync_node->Chandler,FOLLOW_UP,&st_sync_node->timers.t0);
+             if(ret==0)while(1);/*and error occur*/
+             
+             
+          
+        }
+        break;
+        case PTP_WAIT_RESP:
+        {
+          /*enable notify*/
+          if(!local_notify_enable_flag)
+             {
+               ptp_enable_notify(st_sync_node->Chandler);
+             }
+        }
+        break;
+      }
+    }
+    break;
+    case PTP_SYNC:
+    {
+      if(Timer_Expired(&(st_sync_node->remain_sync_time))){
+        /*restart the synchonization process*/
+        st_sync_node->dv_state=PTP_UNSYNC;
+        st_sync_node->ptp_state=PTP_INIT;
+        /*disable notify*/
+        ptp_disable_notify(st_sync_node->Chandler);
+        
+      }
+        
+    }
+  
+  }
 
+}
+
+void ptp_client_process(ptp_status_table * st_sync_node)
+{
+    /*ptp client process*/
+  
+  if(st_sync_node->dv_state == PTP_UNSYNC && st_sync_node->ptp_state==PTP_INIT){
+    /**/
+     st_sync_node->ptp_state=PTP_WAIT_RESP;
+  }else if (st_sync_node->dv_state == PTP_SYNC && Timer_Expired(&(st_sync_node->remain_sync_time))){
+    st_sync_node->dv_state=PTP_UNSYNC;
+    st_sync_node->ptp_state=PTP_INIT;
+  }
 }
 
