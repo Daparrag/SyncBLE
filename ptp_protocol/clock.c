@@ -40,24 +40,19 @@
 /* Includes ------------------------------------------------------------------*/
 #include "ble_clock.h"
 #include "cube_hal.h"
+#include "clock.h"
 
 
-#define DEBUG 0
-#if DEBUG
-#include <stdio.h>
-#define PRINTF(...) printf(__VA_ARGS__)
-#define PRINTDEBUG(...) printf(__VA_ARGS__)
-#else
-#define PRINTF(...)
-#define PRINTDEBUG(...)
+#ifdef DEBUG
+#include "debug.h"
 #endif
 
 
 
-const uint32_t CLOCK_SECOND = 1000;
 static volatile tClockTime current_clock = 0;
 static volatile unsigned long current_seconds = 0;
 static unsigned int second_countdown = 1000;
+static volatile uint8_t initClock = 0;
 
 //RTIMER_CLOCK_LT(a, b); // This should give TRUE if 'a' is less than 'b', otherwise false.
 //RTIMER_ARCH_SECOND; // The number of ticks per second. 
@@ -67,6 +62,10 @@ static unsigned int second_countdown = 1000;
 
 
 void update_clock(){
+  if(!initClock){
+    clock_Init();
+    initClock=1;
+  }
 	current_clock++; /*time miliseconds tinks*/
 	if(--second_countdown == 0){
 		current_seconds+=1;
@@ -79,10 +78,9 @@ void update_clock(){
  * @param  None
  * @retval None
  */
-void Clock_Init(void)
+void clock_Init()
 {
-  // FIXME: as long as Cube HAL is initialized this is OK
-  // Cube HAL default is one clock each 1 ms
+ current_clock = 0;
 }
 
 /**
@@ -91,9 +89,8 @@ void Clock_Init(void)
  * @retval tClockTime
  */
 tClockTime Clock_Time(void)
-{
-	
-  PRINTF("Current Clock: %d ticks and %d seconds \n", current_clock, current_seconds);
+{	
+  PRINTDEBUG("Current Clock: %d ticks and %d seconds \n", current_clock, current_seconds);
   return current_clock;
   
 }
