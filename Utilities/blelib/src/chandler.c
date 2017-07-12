@@ -292,11 +292,15 @@ CHADLE_Status CH_Connection_Complete_perispheral_BLE(connection_t * connection, 
     
     for (i=0; i<5; i++) {
         PRINTDEBUG("0x%02X-", peer_addrs[i]);
+        connection->device_address[i]=peer_addrs[i];
       }
-        PRINTDEBUG("0x%02X", peer_addrs[i]);    
+        PRINTDEBUG("0x%02X", peer_addrs[i]);
+        connection->device_address[i]=peer_addrs[i];
         PRINTDEBUG("\n"); 
 
-  connection->Connection_Handle=handle;      
+  connection->Connection_Handle=handle;
+  
+  
   return CHADLE_SUCCESS;
 
 }
@@ -415,7 +419,7 @@ CHADLE_Status CH_set_advertise_BLE(void * advertise_conf,
    
     
     if(   GET_ROLE(hw_board)!= (GAP_PERIPHERAL_ROLE_IDB04A1 || GAP_BROADCASTER_ROLE_IDB04A1 || GAP_PERIPHERAL_ROLE_IDB05A1 || GAP_BROADCASTER_ROLE_IDB05A1)){
-              PRINTF("There is no possible to setup the device in adverticement mode if it is not in GAP_PERIPHERAL_ROLE or GAP_BROADCASTER_ROLE please set it in app_ble.h/n");
+              PRINTDEBUG("There is no possible to setup the device in adverticement mode if it is not in GAP_PERIPHERAL_ROLE or GAP_BROADCASTER_ROLE please set it in app_ble.h/n");
          }
     /*uses default configuration*/
       ret = aci_gap_set_discoverable(AV_default_config.adveventtype,

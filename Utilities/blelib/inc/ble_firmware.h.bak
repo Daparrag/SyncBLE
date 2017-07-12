@@ -16,11 +16,12 @@
 #include "hci_le.h"
 #include "hal.h"
 #include "sm.h"
+#include "debug.h"
+#include "role_type.h"
 #include "uart_support.h"
 #include "stm32_bluenrg_ble.h"
 #include "ble_clock.h"
 #include "ble_status.h"
-#include "stm32f4xx_nucleo_add_led.h"
 #include <list.h>
 
 #ifndef BLE_APP_CONFIG
@@ -213,6 +214,7 @@ ST_BROADCAST, 						/*!< handler the communication as broadcast node >*/
 ST_CONNECTED_WAIT_DISC,		/*!< connection wait for interchange services and characterstics >*/
 ST_CREATE_CONNECTION,     /*!< connection wait for connection set up >*/
 ST_TIME_OUT,            /*!< the connection exceed the time for stablishement >*/
+
 ST_CONNECTION_LOST        /*!< connection lost or impossible to set up >*/
 }cn_state_t;
 
