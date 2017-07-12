@@ -11,8 +11,9 @@
 #include <osal.h>
 
 #define PTP_VERSION 0x0
-#define SYNC_INTERVAL_MS 0x64 /*100ms*/
-
+#define SYNC_INTERVAL_MS 0x3E8 /*200ms*/
+#define PACKET_ALIVE_MS 0xC8 /*200ms*/
+#define MAX_EXECUTIONS 0x03 /*5 times will be executed the sync*/
 /*Messages_Type*/
 #define SYNC 	  0x01
 #define FOLLOW_UP 0x02
@@ -58,10 +59,13 @@ typedef struct
 	uint16_t Chandler;
         ptp_dv_status dv_state;
 	ptp_state_t ptp_state;
+        uint8_t peer_device_address[6];            /*!< peer device address val*/
         uint8_t seq_number;
         uint8_t peer_ready_to_receive;
+        uint8_t local_notify_enable_flag;
         ptp_clock_st timers;
         struct timer remain_sync_time;
+        struct timer packet_alive;
 }ptp_status_table;
 
 
@@ -75,7 +79,7 @@ typedef struct{
 	uint8_t  control_field; /*2 bit p[0]*/ 
 	uint8_t  sequence_id; /*1 byte P[1]*/
 	uint8_t  msg_sync_interval; /*P[2] 1byte*/
-	uint8_t source_id;	/*5  p[3] & P[8] unique connnection handler*/
+	uint16_t source_id;	/*5  p[3] & P[8] unique connnection handler*/
 }ptp_hdr;/*total 8bytes*/
 
 typedef struct{
@@ -106,6 +110,7 @@ uint8_t create_ptp_packet_hdr(uint16_t chndler,
 ptp_status_t Init_ptp_application(uint8_t ptp_dv_role, 
                                   app_profile_t * profile);
 
+void ptp_service_process(void);
 /***********functions************/
 tBleStatus ptp_init_server();
 void ptp_init_client();

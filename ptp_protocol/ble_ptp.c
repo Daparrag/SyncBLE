@@ -4,10 +4,15 @@
 #include  <blefw_conf.h>
 #endif
 
+#ifdef PTP_TEST_WITH_IRQ
+#include "ptp_time_int_test.h"
+#endif
+
 #include "ble_ptp.h"
 #include "app_ble.h"
 #include "ble_firmware.h"
 #include "common_tables.h"
+#include "clock.h"
 
 #ifndef COPY_VAR
 #define COPY_VAR(source,dest) (memcpy((source),(dest),sizeof(dest)))
@@ -18,17 +23,18 @@
 /**************************Service Variables*************************/
 static uint8_t ptp_role;
 static uint8_t max_number_entries;
-static uint8_t local_notify_enable_flag=0;
+static uint8_t test_max=0;
+
 
 
 #if (ROLE==GAP_CENTRAL_ROLE)
-ptp_status_table PTPStatus [EXPECTED_NODES];/*form the master */
+static ptp_status_table PTPStatus [EXPECTED_NODES];/*form the master */
 #elif (ROLE == GAP_PERIPHERAL_ROLE)
-ptp_status_table PTPStatus [EXPECTED_CENTRAL_NODES]/*form the slaves*/
+static ptp_status_table PTPStatus [EXPECTED_CENTRAL_NODES]/*form the slaves*/
 #endif
-app_service_t bleptp_service;
-app_attr_t bleptp_tx_att;
-app_attr_t bleptp_rx_att;
+static app_service_t bleptp_service;
+static app_attr_t bleptp_tx_att;
+static app_attr_t bleptp_rx_att;
 
 /* ptp service*/
 static const uint8_t ptp_service_uuid[16] = { 0x66, 0x9a, 0x0c,
@@ -51,8 +57,10 @@ static ptp_status_table * get_status_table(uint16_t Chandler);
 static uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time_cpy);
 static uint8_t ptp_attribute_modified_CB(uint16_t chandler, uint16_t attrhandler, uint8_t data_length, uint8_t *att_data, tClockTime arval_time);
 static void ptp_server_process(ptp_status_table * st_sync_node);
-static void ptp_enable_notify(uint16_t chandler);
+static uint8_t ptp_enable_notify(uint16_t chandler);
+static uint8_t ptp_disable_notify(uint16_t chandler);
 static void ptp_client_process(ptp_status_table * st_sync_node);
+static void ptp_update_clock(ptp_clock_st * tm);
 /*******************************************************************************/
 
 
@@ -104,7 +112,7 @@ static void init_ptp_profile(app_profile_t * profile){
 
 
 void ptp_error_handler(void){
-	
+	while(1);
 }
 
 
@@ -114,7 +122,7 @@ void ptp_error_handler(void){
   * @
   */
 
-ptp_status_table * get_status_table(uint16_t Chandler){
+static ptp_status_table * get_status_table(uint16_t Chandler){
   uint8_t i;
   ptp_status_table * rstable=NULL;
   
@@ -130,7 +138,7 @@ ptp_status_table * get_status_table(uint16_t Chandler){
   return rstable;
 }
 
-ptp_state_t * ptp_get_status(uint16_t connHandler){
+static ptp_state_t * ptp_get_status(uint16_t connHandler){
 
 /*since the number of entries are very small up to 8 
  *it is not necessary to implement a complex hash table to associate
@@ -182,6 +190,11 @@ ptp_status_t Init_ptp_application(uint8_t ptp_dv_role, app_profile_t * profile){
                 PTPStatus[i].seq_number=0;
 	}
 
+clock_reset();
+#ifdef PTP_TEST_WITH_IRQ
+ptp_interrupt_test_init(1);
+ptp_Suspend_test_interrupt();
+#endif
 return PTP_SUCESSS;
 }
 
@@ -189,7 +202,7 @@ return PTP_SUCESSS;
 uint8_t ptp_packet_hdr_parse(uint8_t * data, uint8_t data_len, ptp_hdr * hdr){
 uint8_t * p;
 
-	if(data_len < 4)
+	if(data_len < 5)
 	{
 		/*something is wrong return 0*/
 		return 0;
@@ -205,7 +218,7 @@ uint8_t * p;
         hdr->msg_sync_interval = p[2];
         hdr->source_id = p[3] | ((uint16_t) p[4] << 0x8);
         
-return 4;
+return 5;
 }
 
 uint8_t create_ptp_packet_hdr(uint16_t chndler,uint8_t type, ptp_hdr * hdr,uint8_t *buff)
@@ -225,93 +238,56 @@ uint8_t create_ptp_packet_hdr(uint16_t chndler,uint8_t type, ptp_hdr * hdr,uint8
 			((hdr->domain_number & 0x1)<<0x4) |
 			((hdr->control_field & 0x3)<<0x5);
 	p[1] = hdr->sequence_id;
+        
+        p[2] = hdr->msg_sync_interval;
 	
-	p[2] = (chndler & 0xFF);
+	p[3] = (hdr->source_id & 0xFF);
 
-	p[3] = ((chndler >> 0x08)) & 0xFF;  
+	p[4] = ((hdr->source_id >> 0x08)) & 0xFF; 
 
-        return 4; 		
+        return 5; 		
 }
 
-uint8_t get_control_field(uint8_t type)
+static uint8_t get_control_field(uint8_t type)
 {
-  uint8_t cfield;
-  switch (type)
-  {
-    case SYNC:
-    {
-    cfield=0;
-    }
-    break;
-    
-    case FOLLOW_UP:
-    {
-    cfield=1;
-    }
-    break;
-    case DELAY_REQ:
-    {
-    cfield=2;
-    }
-    break;
-    
-    case DELAY_RSP:
-    {
-    cfield=3;
-    }
-    break;
-    default:
-      /*something is wrong*/
-    break;
+  uint8_t cfield=0;
   
+  while(type & 0x1)
+  {
+    type = type >> 1;
+    cfield+=1;
   }
   
-return cfield;  
+  if(cfield > 3) ptp_error_handler();/*somwthing is wrong*/
+  return cfield;
 }
+
 
 uint8_t get_sequence_id( uint8_t type,uint16_t chndler){
   
   ptp_status_table * st =  get_status_table(chndler);
   uint8_t rseq_number;
   
-  switch (type) 
+  rseq_number = st->seq_number;
+  if(type==FOLLOW_UP || DELAY_RSP)
   {
-    case SYNC:
-    {
-      rseq_number = st->seq_number;
-      st->seq_number+=1;
-    }
-    break;
-    case FOLLOW_UP:
-    {
-      rseq_number = st->seq_number;
-    }
-    break;
-    
-    case DELAY_REQ:
-    {
-      rseq_number = st->seq_number;
-      st->seq_number+=1;
-    }
-    break;
-    
-    case DELAY_RSP:
-    {
-       rseq_number = st->seq_number;
-    }
-    break;
-    
-  default:
-    /*somenting is wrong*/
-    break;
-    
+    st->seq_number+=1;
   }
+ 
  return  rseq_number;
-
 }
 
+static void ptp_update_clock(ptp_clock_st * tm){
+    int32_t mp_delay = ((tm->t1 - tm->t0) + (tm->t3 - tm->t2)) / 2; /*assuming constant delay*/
+    int32_t offset = (int32_t)(tm->t1 - tm->t0) - (mp_delay);
+    set_ticks(offset);
+}
 
-uint8_t ptp_attribute_modified_CB(uint16_t chandler, uint16_t attrhandler, uint8_t data_length, uint8_t *att_data, tClockTime arval_time)
+static uint8_t ptp_attribute_modified_CB(uint16_t chandler, 
+                                  uint16_t attrhandler, 
+                                  uint8_t data_length, 
+                                  uint8_t *att_data, 
+                                  tClockTime arval_time)
 {
   uint8_t ret;
   ptp_hdr rptp_hdr;
@@ -349,25 +325,19 @@ uint8_t ptp_attribute_modified_CB(uint16_t chandler, uint16_t attrhandler, uint8
               if(rptp_hdr.ptp_type==FOLLOW_UP)
               {
                   Osal_MemCpy(&st->timers.t0,att_data+ret,sizeof(tClockTime));
-                  /*here the ptp_client could be calculate the offset*/
-                  ret = ptp_send_ptp_packet(chandler,DELAY_REQ,&st->timers.t2);
-                  if (ret == 0)return ret;
-                  st->ptp_state = PTP_PENDING_RESP;
+                  ret = ptp_send_ptp_packet(st->Chandler,DELAY_REQ,&st->timers.t2);
+                  if(ret==0)while(1);
+              }
+
+              if (rptp_hdr.ptp_type==DELAY_RSP)
+              {
+                Osal_MemCpy(&st->timers.t3,att_data+ret,sizeof(tClockTime));
+                 ptp_update_clock(&(st->timers));
+                 Timer_Set(&st->remain_sync_time, SYNC_INTERVAL_MS);/*set the synchonization interval*/
+                 st->dv_state=PTP_SYNC;
               }
             }
             break;
-            case PTP_PENDING_RESP:
-            {
-                if(rptp_hdr.ptp_type==DELAY_RSP)
-                {
-                  Osal_MemCpy(&st->timers.t3,att_data+ret,sizeof(tClockTime));
-                  /*here the ptp_client could update the delay slave-to-master*/
-                  st->dv_state=PTP_SYNC;
-                  /*set_sync_time*/
-                }
-            }
-            break;
-          
         }
       }
       
@@ -386,12 +356,12 @@ uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time
   
   if(pkt_type==SYNC)
   {
-  *time_cpy = Clock_Time();
+  *time_cpy = clock_time();
   }
    
   if (pkt_type == DELAY_REQ)
   {
-    *time_cpy = Clock_Time();  
+    *time_cpy = clock_time();  
   }
   
   Osal_MemCpy(tx_buffer+ret,time_cpy,sizeof(tClockTime));
@@ -403,7 +373,7 @@ uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time
   {
     res_ble = aci_gatt_write_without_response(chandler,bleptp_rx_att.Associate_CharHandler + 1, 8, tx_buffer);
   } 
-  else {
+  else{
     
     res_ble = aci_gatt_update_char_value(bleptp_service.ServiceHandle,bleptp_tx_att.CharHandle,0,8,tx_buffer);
   } 
@@ -413,29 +383,29 @@ uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time
   
 }
 
-void ptp_enable_notify(uint16_t chandler){
+uint8_t ptp_enable_notify(uint16_t chandler){
   uint8_t notify_enable_data [] = {0x01,0x00};
   struct timer t;
   Timer_Set(&t, CLOCK_SECOND*10);
   
   while(aci_gatt_write_charac_descriptor(chandler,bleptp_tx_att.Associate_CharHandler+2,2,notify_enable_data)==BLE_STATUS_NOT_ALLOWED)
   {
-    if(Timer_Expired(&t))return;/*error*/
+    if(Timer_Expired(&t))return 0;/*error*/
   }
-local_notify_enable_flag=1;
+return 1;
 }
 
 
-void ptp_disable_notify(uint16_t chandler){
+uint8_t ptp_disable_notify(uint16_t chandler){
 uint8_t notify_disable_data [] = {0x00,0x00};
 struct timer t;
 Timer_Set(&t, CLOCK_SECOND*10);
 while(aci_gatt_write_charac_descriptor(chandler,bleptp_tx_att.Associate_CharHandler+2,2,notify_disable_data)==BLE_STATUS_NOT_ALLOWED)
   {
-    if(Timer_Expired(&t))return;/*error*/
+    if(Timer_Expired(&t))return 0;/*error*/
   }
 
-local_notify_enable_flag=0;
+return 0;
 }
 
 
@@ -456,9 +426,15 @@ void GATT_GET_Notification_CB(uint16_t chandler, uint16_t attrhandler, uint8_t d
          st->ptp_state==PTP_WAIT_RESP)
     {
       ptp_send_ptp_packet(chandler,DELAY_RSP,&arval_time);
-      
+#ifdef PTP_TEST_WITH_IRQ
+      ptp_Resume_test_interrupt();
+#endif
+       Timer_Set(&st->remain_sync_time, SYNC_INTERVAL_MS);/*set the synchonization interval*/
+       st->dv_state=PTP_SYNC;  
     }
 }
+
+
 
 
 
@@ -515,74 +491,89 @@ void ptp_service_process(){
  
 }
 
+
+
+
+static void stop(){
+ ptp_Suspend_test_interrupt();  
+BSP_LED_On(LED2);
+while(1);
+}
+
+
+
 void ptp_server_process(ptp_status_table * st_sync_node)
 {
     /*ptp server process*/
   uint8_t ret;
-  
-  switch(st_sync_node->dv_state)
-  {     
+
+   switch(st_sync_node->dv_state){
     case PTP_UNSYNC:
     {
-      switch(st_sync_node->ptp_state)
-      {
-        case PTP_UNITIALIZED:
+        switch(st_sync_node->ptp_state)
         {
-          /*this  state is and error*/
-        }
-        break;
-        
-        case PTP_INIT:
-        {
-          
+           case PTP_INIT:
+           {
             ret = ptp_send_ptp_packet(st_sync_node->Chandler,SYNC,&st_sync_node->timers.t0);
             if(ret==0)while(1);/*and error occur*/
+            st_sync_node->local_notify_enable_flag=ptp_enable_notify(st_sync_node->Chandler);
             ret = ptp_send_ptp_packet (st_sync_node->Chandler,FOLLOW_UP,&st_sync_node->timers.t0);
-             if(ret==0)while(1);/*and error occur*/
-             
-             
-          
-        }
-        break;
-        case PTP_WAIT_RESP:
-        {
-          /*enable notify*/
-          if(!local_notify_enable_flag)
-             {
-               ptp_enable_notify(st_sync_node->Chandler);
-             }
-        }
-        break;
-      }
-    }
-    break;
-    case PTP_SYNC:
-    {
-      if(Timer_Expired(&(st_sync_node->remain_sync_time))){
-        /*restart the synchonization process*/
-        st_sync_node->dv_state=PTP_UNSYNC;
-        st_sync_node->ptp_state=PTP_INIT;
-        /*disable notify*/
-        ptp_disable_notify(st_sync_node->Chandler);
-        
-      }
-        
-    }
-  
-  }
+            if(ret==0)while(1);/*and error occur*/
+            Timer_Set(&(st_sync_node->packet_alive), PACKET_ALIVE_MS);/*set the timer used for restart the synchronization*/
+            st_sync_node->ptp_state=PTP_WAIT_RESP;
+           }
+           break;
+           case PTP_WAIT_RESP:
+           {
+              if(Timer_Expired(&(st_sync_node->packet_alive)))
+              {
+                if(st_sync_node->local_notify_enable_flag)st_sync_node->local_notify_enable_flag=ptp_disable_notify(st_sync_node->Chandler);
+                st_sync_node->dv_state=PTP_UNSYNC;
+                st_sync_node->ptp_state=PTP_INIT;
 
-}
+              }
+
+           }
+           break;
+        }
+        break;
+        case PTP_SYNC:
+         {
+              if(Timer_Expired(&(st_sync_node->remain_sync_time))){
+#ifdef PTP_TEST_WITH_IRQ  
+         if(test_max==MAX_EXECUTIONS){
+          stop_clock();  
+         stop();
+          }else{
+          test_max+=1;
+          }          
+                
+        ptp_Suspend_test_interrupt();
+#endif             
+                  if(st_sync_node->local_notify_enable_flag) st_sync_node->local_notify_enable_flag=ptp_disable_notify(st_sync_node->Chandler);
+                  st_sync_node->dv_state=PTP_UNSYNC;
+                  st_sync_node->ptp_state=PTP_INIT;
+              }
+           }
+           break;
+        }
+    }
+} 
+
 
 void ptp_client_process(ptp_status_table * st_sync_node)
 {
     /*ptp client process*/
-  
-  if(st_sync_node->dv_state == PTP_UNSYNC && st_sync_node->ptp_state==PTP_INIT){
-    /**/
-     st_sync_node->ptp_state=PTP_WAIT_RESP;
-  }else if (st_sync_node->dv_state == PTP_SYNC && Timer_Expired(&(st_sync_node->remain_sync_time))){
-    st_sync_node->dv_state=PTP_UNSYNC;
-    st_sync_node->ptp_state=PTP_INIT;
+
+  if(st_sync_node->dv_state ==PTP_SYNC && Timer_Expired(&(st_sync_node->remain_sync_time)))
+  {
+#ifdef PTP_TEST_WITH_IRQ        
+        ptp_Suspend_test_interrupt();
+#endif  
+
+      st_sync_node->dv_state=PTP_UNSYNC;
+      st_sync_node->ptp_state=PTP_WAIT_RESP;
   }
+
 }
 

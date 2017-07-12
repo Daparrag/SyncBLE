@@ -83,25 +83,56 @@ return ret;
 
 void test_ptp_application(void)
 {
+  /*  the ptp_server is who has the reference clock that will be used for synchonize 
+   *  the ptp_client devices; for this solution was considered only one ptp_server  
+   *  an has been designed as a device who begins the synchonization and who replay 
+   *  the commands sent by the ptp_clients through the write request. 
+   *  therefore the ptp_server has to scan for the service associated to the ptp_sync
+   *  if the ptp_client devices doesn't replay for the scanning means that the ptp_client do not
+   *  need to be synchonized therefore is discarded.
+   *
+   *  from the ptp_client side, it only has to wait for the sync command comming form the ptp_server
+   *  then request properly through the notfication and finally wait for the ptp_server replay
+   *  once all the iformaton needed for synchonize is collected the ptp_client ajust it local clock.  
+   *  
+   *  Once the clock in the ptp_client is ajusted; The device remain in this synchronous status for 
+   *  a defined amount of time where once this is expired the device restart the  synchronization.  
+   */
   
-  
-     NET_Status ret_net;
-     APP_Status ret_app;
-     ptp_status_t ret_ptp;
-    /*1.0 set_address and name to the APP module*/ 
+     static NET_Status ret_net;
+     static APP_Status ret_app;
+     static ptp_status_t ret_ptp;
+/*1.0 set_address and name to the APP module*/ 
      ret_app = APP_Set_Address_And_Name_BLE(DEVICE_BDADDR,sizeof(DEVICE_BDADDR),local_name,sizeof(local_name));
      if(ret_app!=APP_SUCCESS)while(1);/*an error occur*/
-     /*1.1 initialize the device*/ 
+     
+/*1.1 initialize the device*/ 
      ret_app = APP_Init_BLE();
     if(ret_app!=APP_SUCCESS)while(1);/*an error occur*/
-    /*init_the_ptp_application*/
+    
+/*init_the_ptp_application*/
       ret_ptp = Init_ptp_application(PTP_SERVER,&PROFILE);
       if(ret_ptp!=PTP_SUCESSS)while(1);/*an error occur*/
-      uint8_t list_index [] = {0,1};
+      
+/*2. init the the network module*/
+      network_t * network_config;      
+      ret_net = init_network(NET_CONNECTED, DEVICE_CENTRAL,0x2,&network_config);
+      if(ret_net != NET_SUCCESS)Error_Handler();  
+      
+/*3. associate this profile to both connections*/      
+       uint8_t list_index [] = {0,1};
       ret_net = net_setup_profile_definition (&PROFILE,list_index,sizeof(list_index));
       if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
+      
+/*4. Configure an user discovery configuration*/            
       connection_handler_set_discovery_config(&DISC_config);
       
-      /**/
-    
+      
+      while(1)
+      {
+        network_process();
+        ptp_service_process();
+        HCI_Packet_Release_Event_CB();
+      }
+      
 }

@@ -7,6 +7,7 @@
 #include "gp_timer.h"
 
 void set_ticks(tClockTime Ctime);
+void ajust_clock(int32_t Ctime);
 void set_clock(tClockTime Ctime, tClockTime Cseconds);
 void clock_reset(void);
 void clock_wait(uint32_t i);
@@ -14,4 +15,5 @@ tClockTime sclock_time(void);
 tClockTime clock_time(void);
 void clock_Init(void);
 void update_clock(void);
+void stop_clock(void);
 #endif/*_CLOCK_H_*/

@@ -53,6 +53,7 @@ static volatile tClockTime current_clock = 0;
 static volatile unsigned long current_seconds = 0;
 static unsigned int second_countdown = 1000;
 static volatile uint8_t initClock = 0;
+static volatile uint8_t stopClock = 0;
 
 //RTIMER_CLOCK_LT(a, b); // This should give TRUE if 'a' is less than 'b', otherwise false.
 //RTIMER_ARCH_SECOND; // The number of ticks per second. 
@@ -66,12 +67,14 @@ void update_clock(){
     clock_Init();
     initClock=1;
   }
+  if(!stopClock){
 	current_clock++; /*time miliseconds tinks*/
 	if(--second_countdown == 0){
 		current_seconds+=1;
 		 second_countdown = CLOCK_SECOND;
 	}
         //PRINTF("clock setup to : %d ticks and %d seconds \n", current_clock, current_seconds);
+  }       
 }
 /**
  * @brief  Clock_Init
@@ -90,6 +93,7 @@ void clock_Init()
  */
 tClockTime clock_time(void)
 {	
+ 
  // PRINTDEBUG("Current Clock: %d ticks and %d seconds \n", current_clock, current_seconds);
   return current_clock;
   
@@ -151,6 +155,10 @@ void set_clock(tClockTime Ctime, tClockTime Cseconds)
 }
 
 
+void stop_clock(void){
+    stopClock=1;
+}
+
 /**
  * @brief  set the ticks
  * @param  None
@@ -159,7 +167,12 @@ void set_clock(tClockTime Ctime, tClockTime Cseconds)
 
 void set_ticks(tClockTime Ctime)
 {
-  current_clock=Ctime;
+  current_clock=(Ctime);
+}
+
+void ajust_clock(int32_t offset){
+  tClockTime ajusted = current_clock - (offset);
+  set_ticks(ajusted);
 }
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
