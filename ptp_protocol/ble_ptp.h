@@ -11,9 +11,9 @@
 #include <osal.h>
 
 #define PTP_VERSION 0x0
-#define SYNC_INTERVAL_MS 0x3E8 /*200ms*/
+#define SYNC_INTERVAL_MS 0xC8 /*200ms*/
 #define PACKET_ALIVE_MS 0xC8 /*200ms*/
-#define MAX_EXECUTIONS 0x03 /*5 times will be executed the sync*/
+#define MAX_EXECUTIONS 0x64 /*5 times will be executed the sync*/
 /*Messages_Type*/
 #define SYNC 	  0x01
 #define FOLLOW_UP 0x02

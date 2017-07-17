@@ -25,6 +25,10 @@ static uint8_t ptp_role;
 static uint8_t max_number_entries;
 static uint8_t test_max=0;
 
+static uint32_t TM [2][MAX_EXECUTIONS/2];
+static uint8_t tm_index=0;
+static uint8_t tm_index1=0;
+
 
 
 #if (ROLE==GAP_CENTRAL_ROLE)
@@ -137,6 +141,24 @@ static ptp_status_table * get_status_table(uint16_t Chandler){
   
   return rstable;
 }
+
+
+static  uint8_t get_connection_index(uint16_t Chandler){
+  uint8_t i;
+ 
+  
+    for(i=0; i < max_number_entries; i++)
+    {
+  
+        if(PTPStatus[i].Chandler == Chandler)
+          {
+			return i;
+          }
+    
+    }
+  return 2;
+}
+
 
 static ptp_state_t * ptp_get_status(uint16_t connHandler){
 
@@ -361,7 +383,7 @@ uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time
    
   if (pkt_type == DELAY_REQ)
   {
-    *time_cpy = clock_time();  
+    *time_cpy = clock_time();
   }
   
   Osal_MemCpy(tx_buffer+ret,time_cpy,sizeof(tClockTime));
@@ -413,12 +435,15 @@ void GATT_GET_Notification_CB(uint16_t chandler, uint16_t attrhandler, uint8_t d
 {
   uint8_t ret;
    ptp_hdr rptp_hdr;
+   uint8_t cidex;
    ptp_status_table * st;
     /* Evaluate if this attr_handler is associated to this process*/
     /* before to process the packet*/
    if(attrhandler!=bleptp_tx_att.Associate_CharHandler+1)return;
     st = get_status_table(chandler); 
     ret = ptp_packet_hdr_parse(att_data, data_length, &rptp_hdr);
+    
+    cidex = get_connection_index(chandler);
     if(ret==0)while(1);/*error occur*/
     
     if(st->dv_state==PTP_UNSYNC && 
@@ -426,6 +451,12 @@ void GATT_GET_Notification_CB(uint16_t chandler, uint16_t attrhandler, uint8_t d
          st->ptp_state==PTP_WAIT_RESP)
     {
       ptp_send_ptp_packet(chandler,DELAY_RSP,&arval_time);
+          TM[cidex][tm_index]=arval_time;
+          if(cidex==0)
+          tm_index+=1;
+          else
+          tm_index1+=1;  
+      
 #ifdef PTP_TEST_WITH_IRQ
       ptp_Resume_test_interrupt();
 #endif
