@@ -62,6 +62,17 @@ static volatile uint8_t ctrl_peding_packet = 0;
 
 void Ctrl_Sync_error_handler(void);
 
+
+/**
+  * @brief  This function creates a control sync header.
+  * @param uint8_t creceiver_id; 
+  *	@param uint8_t cpkt_type: packet type.
+  *	@param ctrl_sync_hdr * hdr : ptp_header data-structure
+  *	@param uint8_t * buff : packet buffer
+  * @retval : payload pointer.
+  */
+
+
 static uint8_t ctrl_get_source_id()
 {
 
@@ -89,18 +100,73 @@ uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,uint8_t cpkt_type, ctrl_sy
 	hdr->source_id = ctrl_get_source_id();
 	hdr->receiver_id = creceiver_id;
 	hdr->total_receivers = ctrl_get_total_receives();
-	p[0]=hdr->pkt_type;
-	p[1]=hdr->source_id;
-	p[2]=hdr->receiver_id;
-	p[3]=hdr->total_receivers;
+	*p++=hdr->pkt_type;
+	*p++=hdr->source_id;
+	*p++=hdr->receiver_id;
+	*p++=hdr->total_receivers;
 
-	 return 4;
+	 return (p - buff);
 }
 
-uint8_t create_ctrl_init_packet()
+
+
+/**
+  * @brief  This function creates a control sync init packet.
+  * @param uint8_t creceiver_id; 
+  *	@param uint8_t cpackets: num_packets to trasmit default use 0.
+  *	@param ctrl_init_packet * init_pkt_str : control init datastructure
+  *	@param uint8_t * buff : packet buffer
+  * @retval : payload pointer.
+  */
+uint8_t create_ctrl_init_packet( uint8_t creceiver_id, uint8_t cpackets,ctrl_init_packet * init_pkt_str, uint8_t *buff )
 {
-	
+	uint8_t ret;
+	uint8_t * p = buff;
+
+	ret = create_ctrl_packet_hdr (creceiver_id,&(init_pkt_str->header),buff);
+	init_pkt_str->total_packets = cpackets;
+	init_pkt_str->tx_delay = ctrl_get_delay_by_id(creceiver_id);
+	init_pkt_str->slave_max_delay = ctrl_get_max_delay();
+	p + = ret;
+	*p++ = init_pkt_str->total_packets = cpackets;
+	*p++=  ((init_pkt_str->tx_delay & 0xFF00) >> 8);
+	*p++=  (init_pkt_str->tx_delay & 0xFF);
+	*p++=	((init_pkt_str->slave_max_delay & 0xFF00) >> 8);
+	*p++=	(init_pkt_str->slave_max_delay & 0xFF);
+
+	return (p - buff); 
+
 }
+
+
+
+
+/**
+  * @brief  This function creates a control sync report packet.
+  * @param uint8_t creceiver_id; 
+  *	@param ctrl_report_src_packet * src_report: src report data-structure
+  *	@param uint8_t * buff : packet buffer
+  * @retval : payload pointer.
+  */
+uint8_t create_ctrl_report_src_packet( uint8_t creceiver_id, ctrl_report_src_packet * src_report, uint8_t *buff )
+{
+	uint8_t ret;
+	uint8_t * p = buff;
+	ret = create_ctrl_packet_hdr (creceiver_id,&(src_report->header),buff);
+	src_report->tx_delay = ctrl_get_delay_by_id(creceiver_id);
+	src_report->slave_max_delay = ctrl_get_max_delay();
+	p + = ret;
+
+	*p++=  ((init_pkt_str->tx_delay & 0xFF00) >> 8);
+	*p++=  (init_pkt_str->tx_delay & 0xFF);
+	*p++=	((init_pkt_str->slave_max_delay & 0xFF00) >> 8);
+	*p++=	(init_pkt_str->slave_max_delay & 0xFF);
+	return (p - buff); 
+}
+
+
+
+
 
 
 
