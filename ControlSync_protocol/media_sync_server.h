@@ -19,10 +19,13 @@
 
 
 #ifdef USE_TIMESTAMP
-#define CTRL_MODE 		1
+#define CTRL_MODE 		1 /*enable PTP to handler the control sync protocol*/
 #else
-#define CTRL_MODE  		0
+#define CTRL_MODE  		0 /*use the static configuration to handler the control syn protocol*/
 #endif
+
+
+
 
 typedef enum 
 {

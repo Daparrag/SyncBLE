@@ -56,7 +56,7 @@ static app_attr_t ctrl_sync_tx_att;
 static uint8_t source_id = SOURCE_ID;
 static uint8_t total_receivers;
 static volatile uint8_t ctrl_peding_packet = 0;
-
+static ctrl_status_table CTRL_GBAL_STR[EXPECTED_NODES];
 
 
 
@@ -64,22 +64,27 @@ void Ctrl_Sync_error_handler(void);
 
 
 /**
-  * @brief  This function creates a control sync header.
-  * @param uint8_t creceiver_id; 
-  *	@param uint8_t cpkt_type: packet type.
-  *	@param ctrl_sync_hdr * hdr : ptp_header data-structure
-  *	@param uint8_t * buff : packet buffer
-  * @retval : payload pointer.
+  * @brief  This function return the ctrol id of the node.
+  *	@param none
+  * @retval : the control id of the node.
   */
 
 
-static uint8_t ctrl_get_source_id()
+static uint8_t ctrl_get_source_id(void)
 {
 
 	return source_id;
 }
 
-static uint8_t ctrl_get_total_receives()
+
+
+/**
+  * @brief  This function return the number of receivers for a single sync group.
+  *	@param none
+  * @retval : number of receivers within a synchonization group
+  * @note : this version only support one syncgroup.
+  */
+static uint8_t ctrl_get_total_receives(void)
 {
 
 	return total_receivers;
@@ -141,6 +146,10 @@ uint8_t create_ctrl_init_packet( uint8_t creceiver_id, uint8_t cpackets,ctrl_ini
 
 
 
+
+
+
+
 /**
   * @brief  This function creates a control sync report packet.
   * @param uint8_t creceiver_id; 
@@ -166,10 +175,30 @@ uint8_t create_ctrl_report_src_packet( uint8_t creceiver_id, ctrl_report_src_pac
 
 
 
+send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type)
+{
+	uint8_t ret;
+	uint8_t tx_buffer[10];
+
+	if(pkt_type == INITIATOR)
+	{
+		
+		
+	}
+
+}
 
 
 
 
+
+
+
+/**
+  * @brief  This function initializes the contol synchonization protocol.
+  * @param  app_profile_t * profile : profile to associate the service. 
+  * @retval : none.
+  */
 
 void Ctrl_Sync_init(app_profile_t * profile)
 {
@@ -202,6 +231,92 @@ void Ctrl_Sync_init(app_profile_t * profile)
 
 }
 
+/**
+  * @brief  This function return the status of the synchonization protocol.
+  * @param  none
+  * @retval : control synchonization status.
+  */
+
+ctrl_sync_status Ctrl_Sync_status(void)
+{
+	return CTRL_status;
+}
+
+/**
+  * @brief  This function force a specific status of the synchonization protocol.
+  * @param  ctrl_sync_status status: control synchonization status
+  * @retval : none
+  */
+void Ctrl_Sync_set_status(ctrl_sync_status status)
+{
+	CTRL_status = status;
+}  
+
+
+
+
+/**
+  * @brief  This function is used at the begining of the media transmission 
+  			to sent the initialization parameters to all the synchonization-media-clients.
+  * @param  uint8_t no_receivers : indicates the number of recevers.
+  * @param  uint8_t no_packets : optional number of packets to transmit.
+  * @retval : none
+  */
+void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets)
+{
+	uint8_t i;		
+	if(CTRL_status != UNSTARTED) return;
+	
+#if CTRL_MODE
+/*using ptp*/
+
+#else
+/*not_ptp then uses the static config*/	
+total_receivers = no_receivers;
+	for(i=0; i < no_receivers; i++)
+	{
+		CTRL_GBAL_STR[i].receiver_id = i+1;
+		CTRL_GBAL_STR[i].seq_id = 0;
+		CTRL_GBAL_STR[i].total_receivers=no_receivers;
+		CTRL_GBAL_STR[i].total_packets = no_packets;
+		CTRL_GBAL_STR[i].tx_delay = TX_INTERVAL;
+		CTRL_GBAL_STR[i].inter_slave_delay = EXPECTED_DELAY * (1-i);
+	}
+
+		ctrl_peding_packet = 1;
+		CTRL_status = STARTING;
+
+
+#endif
+
+	
+}
+
+
+void Ctrl_Sync_send_pending_packets(void)
+{
+
+uint8_t i;
+
+	if(ctrl_peding_packet)
+	{
+		switch (CTRL_status)
+		{
+			case STARTING:
+			{
+				for(i=0; i < total_receivers; i++)
+				send_ctrl_sync_packet()
+
+			}
+			break;
+
+		}
+	}
+	
+		
+}
+
+
 
 
 //static void set_ctrl_parameters(ptp_sync_times * ptp_times)
@@ -232,39 +347,6 @@ void Ctrl_Sync_init(app_profile_t * profile)
 //
 //}
 
-ctrl_sync_status Ctrl_Sync_status(void)
-{
-	return CTRL_status;
-}
-
-void Ctrl_Sync_set_status(ctrl_sync_status status)
-{
-	CTRL_status = status;
-}  
-
-
-void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets)
-{
-uint8_t i;
-total_receivers = no_receivers;
-#if CTRL_MODE
-
-#else
-CTRL_status = STARTING;
- 
-	/*assumming only two slaves*/
-for(i=0; i < no_receivers; i++)
-{
-CTRL_SYNC_STR[i].receiver_id= i;
-CTRL_SYNC_STR[i].total_receivers = no_receivers;
-CTRL_SYNC_STR[i].total_packets = no_packets;
-CTRL_SYNC_STR[i].tx_delay = TX_INTERVAL;
-CTRL_SYNC_STR[i].inter_slave_delay =  EXPECTED_DELAY * (1-i);
-}
-ctrl_peding_packet = 1;
-#endif
-
-}
 
 
 void Ctrl_Sync_parameters(void)
