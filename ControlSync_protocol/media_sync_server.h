@@ -86,7 +86,7 @@ typedef struct
 	uint8_t  seq_number;
 	uint16_t tx_delay;
 	uint16_t slave_max_delay_diff;			//16bits//
-}ptp_status_table;
+}ctrl_status_table;
 
 
 
