@@ -10,6 +10,7 @@
 #include "app_ble.h"
 #include "network.h"
 /*choose properly*/
+/*please not use this file with if you are testing the sync_ctrl_protocol*/
 //MASTER//
 const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE1}; /*device addrs*/
 const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','O','N','E',}; /*device name*/
@@ -174,12 +175,30 @@ void test_ptp_server_application(void)
       //PTP_SYNC_set_periodic_sync(3600); 
       PTP_SYNC_set_periodic_sync(500);
       //PTP_SYNC();
-      while(1)
-      {
-        network_process();
-        ptp_server_sync_process();
-        HCI_Packet_Release_Event_CB();
-      }
+
+
+#if 0 /*used to optimize the process (warning not yet tested)*/
+  
+  do{
+    network_process();
+    HCI_Packet_Release_Event_CB();  
+    
+  }while(network_process() != DEVICE_READY)
+
+#else
+
+  while(1)
+  {
+    network_process();
+    ptp_server_sync_process();
+    HCI_Packet_Release_Event_CB();
+  }
+
+#endif      
+      
+
+
+
       
 }
 
@@ -228,11 +247,11 @@ void test_ptp_client_application(void)
       if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
 
 /*5.0 for this specific test */  
-       uint8_t list_index_profile [] = {0,1};
-       ret_net=net_setup_connection_config(&ConnSlave1,&(list_index_profile[0]),1);
-        if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
-       ret_net=net_setup_connection_config(&ConnSlave2,&(list_index_profile[1]),1);
-        if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
+       //uint8_t list_index_profile [] = {0,1};
+       //ret_net=net_setup_connection_config(&ConnSlave1,&(list_index_profile[0]),1);
+       // if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
+       //ret_net=net_setup_connection_config(&ConnSlave2,&(list_index_profile[1]),1);
+       // if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
       ret_net= service_handler_config(DONT_FIND_SERVICE,DONT_FIND_CHAR,NULL,0); /*ptp_client is who has to be synchonized. Therefore, for this solution is no needed to scan ptp_server services */
        if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
        

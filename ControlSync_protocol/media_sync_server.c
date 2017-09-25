@@ -57,6 +57,7 @@ static uint8_t source_id = SOURCE_ID;
 static uint8_t total_receivers;
 static volatile uint8_t ctrl_peding_packet = 0;
 static ctrl_status_table CTRL_GBAL_STR[EXPECTED_NODES];
+volatile uint8_t ctrl_sync_id = 0;
 
 
 /****************STATIC FUNCTIONS****************************/
@@ -734,6 +735,12 @@ void Ctrl_Sync_connection_interval_handler(){
   uint8_t i;
  if(ctrl_peding_packet){
  	CTRL_status = SYNCRONIZING;
+ 	
+
+
+
+
+
  	for(i=0; i < total_receivers; i++)
  	{
  		Ctrl_Sync_send_packet(i);
