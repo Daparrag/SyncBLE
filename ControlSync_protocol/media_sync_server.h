@@ -107,6 +107,24 @@ typedef struct
 
 
 
+void Ctrl_Sync_init(app_profile_t * profile);
+
+void ctrl_input_packet_process(uint16_t chandler, 
+                            uint16_t attrhandler, 
+                            uint8_t data_length, 
+                            uint8_t *att_data, 
+                            tClockTime arval_time);
+
+void ctrl_sync_status Ctrl_Sync_status(void);
+
+void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets);
+
+void Ctrl_Sync_send_pending_packets(void);
+
+
+
+
+
 
 
 /************OLD**************/

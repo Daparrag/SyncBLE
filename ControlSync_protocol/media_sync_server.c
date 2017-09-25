@@ -59,8 +59,61 @@ static volatile uint8_t ctrl_peding_packet = 0;
 static ctrl_status_table CTRL_GBAL_STR[EXPECTED_NODES];
 
 
+/****************STATIC FUNCTIONS****************************/
+static void Ctrl_Sync_error_handler(void);
 
-void Ctrl_Sync_error_handler(void);
+static uint16_t ctrl_get_delay_by_id(uint8_t creceiver_id);
+
+static uint16_t  ctrl_get_max_delay(uint8_t ctrl_table_idx);
+
+static uint8_t ctrl_get_source_id(void);
+
+static uint16_t  ctrl_get_max_delay(uint8_t ctrl_table_idx);
+
+static uint8_t ctrl_get_source_id(void);
+
+static uint8_t ctrl_get_total_receives(void);
+
+static uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,
+									   uint8_t cpkt_type, 
+									   ctrl_sync_hdr * hdr, 
+									   uint8_t *buff);
+
+static uint8_t create_ctrl_init_packet( uint8_t creceiver_id, 
+										uint8_t cpackets,
+										ctrl_init_packet * init_pkt_str, 
+										uint8_t *buff );
+
+static ctrl_status_table * get_ctrl_table_by_src_dest_index(uint8_t _idx);
+
+static uint8_t create_ctrl_report_src_packet( uint8_t creceiver_id, 
+											  ctrl_report_src_packet * src_report, 
+											  uint8_t *buff );
+
+static void process_init_packet(ctrl_init_packet * init_pack);
+
+static void process_report_packet(ctrl_report_src_packet * report_pack);
+
+static void send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type);
+
+static uint8_t  parse_ctrl_sync_packet_header(uint8_t * data, 
+											  uint8_t data_len, 
+											  ctrl_sync_hdr * hdr);
+
+static uint8_t  parse_ctrl_init_packet(uint8_t * data, 
+									   uint8_t data_len,
+									   ctrl_init_packet * init_pack);
+
+static uint8_t  parse_ctrl_report_src_packet(uint8_t * data, 
+											 uint8_t data_len,
+											 ctrl_report_src_packet * report_pack);
+
+
+
+
+
+
+
 
 
 
@@ -348,7 +401,7 @@ void ctrl_input_packet_process(uint16_t chandler,
   * @retval : void.
   */
 
-void send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type)
+static void send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type)
 {
 	tBleStatus res_ble;
 	uint8_t ret;
