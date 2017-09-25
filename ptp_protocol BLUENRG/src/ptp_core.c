@@ -273,7 +273,7 @@ ptp_status_table * get_status_table(uint16_t Chandler){
   * @param uint8_t * data: packet itput.
   *	@param uint8_t data_len size of the packet.
   *	@param ptp_hdr * hdr : ptp_header structure 
-  * @retval : payload pointer.
+  * @retval : payload pointer offset.
   */
 uint8_t ptp_packet_hdr_parse (uint8_t * data, uint8_t data_len, ptp_hdr * hdr){
 uint8_t * p;
@@ -657,6 +657,29 @@ void ptp_server_sync_process(){
 
 }
 
+
+void set_connection_clients(uint8_t conn_entries)
+{
+  uint8_t i;
+  max_number_entries = conn_entries;
+  for (i=0; i < conn_entries; i++)
+  {
+      PTPStatus[i].Chandler = NET_get_connection_handler(i);
+  }
+}
+
+
+
+void set_connection_servers(uint8_t serv_conn_entries)
+{
+   uint8_t i;
+   max_number_entries = serv_conn_entries;
+   for (i=0; i < conn_entries; i++)
+   {
+      PTPStatus[i].Chandler = NET_get_connection_handler(i);
+   }
+    
+}
 
 
 void ptp_client_sync_process(){

@@ -537,7 +537,8 @@ void Ctrl_Sync_init(app_profile_t * profile)
   	ctrl_sync_tx_att.isVariable=1;
   	ret= APP_add_BLE_attr(&ctrl_sync_service,&ctrl_sync_tx_att);
     if(ret!=APP_SUCCESS)Ctrl_Sync_error_handler();
-
+/*INITIALIZE THE CONNECTION INTERVAL INTERRUPTION USED TO SEND DATA SYNCHRONOUSLY*/
+	 BlueNRG_ConnInterval_Init(10);
 #endif	
 
 }
@@ -603,6 +604,18 @@ total_receivers = no_receivers;
 
 	
 }
+
+
+void Init_Ctrl_Sync_application(app_profile_t * profile)
+{
+	/*1. associate the service to the reference profile*/
+	/*1.1. init the connection interval interruption*/
+
+	Ctrl_Sync_init(profile);
+}
+
+
+
 
 
 void Ctrl_Sync_send_pending_packets(void)
@@ -713,6 +726,9 @@ void Ctrl_Sync_send_packet(uint8_t id_receiver)
 	// res_ble = aci_gatt_write_without_response(chandler,ctrl_sync_tx_att.Associate_CharHandler + 1,8,tx_buffer);
 	
 }
+
+
+
 
 void Ctrl_Sync_connection_interval_handler(){
   uint8_t i;

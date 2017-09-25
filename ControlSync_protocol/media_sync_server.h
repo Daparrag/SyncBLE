@@ -18,7 +18,7 @@
 #define EXPECTED_DELAY			 (((CONN_L1 + CONN_L2)/2) +  IFS)
 
 
-#ifdef USE_TIMESTAMP
+#ifdef USE_PTP_PROTOCOL
 #define CTRL_MODE 		1 /*enable PTP to handler the control sync protocol*/
 #else
 #define CTRL_MODE  		0 /*use the static configuration to handler the control syn protocol*/

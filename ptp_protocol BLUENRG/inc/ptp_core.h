@@ -77,6 +77,8 @@ typedef struct{
 /****************Functions*************************/	
 
 void Init_ptp_application(uint8_t ptp_dv_role, app_profile_t * profile);
+void set_connection_clients(uint8_t conn_entries);
+void set_connection_servers(uint8_t serv_conn_entries);
 void ptp_server_sync_process();
 void ptp_client_sync_process();
 uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time_cpy);
