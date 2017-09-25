@@ -83,21 +83,35 @@ uint16_t slave_max_delay;			//16bits//
 
 
 /*Protocol Control Table*/
-typedef struct 
-{
-	uint8_t  receiver_id;
-	uint8_t  seq_number;
-	uint16_t tx_delay;
-	uint16_t slave_max_delay_diff;			//16bits//
-}ctrl_status_table;
-
-
 
 typedef struct {
 uint8_t session_id;
 uint8_t total_receivers;
 uint8_t total_packets;
 }streaming_session;
+
+typedef struct 
+{
+#if	(ROLE == GAP_PERIPHERAL_ROLE)
+	ctrl_sync_status  local_sync_status; //used to support multiple source streams (not yet implemented)
+#endif	
+	uint8_t  source_id;
+	uint8_t  receiver_id;
+	uint8_t  seq_id;
+	uint8_t total_receivers;
+	uint8_t total_packets;
+	uint16_t tx_delay;
+	uint16_t slave_max_delay_diff;			//16bits//
+}ctrl_status_table;
+
+
+
+
+
+
+/************OLD**************/
+
+
 
 
 typedef struct {

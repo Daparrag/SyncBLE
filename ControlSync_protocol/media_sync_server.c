@@ -63,12 +63,58 @@ static ctrl_status_table CTRL_GBAL_STR[EXPECTED_NODES];
 void Ctrl_Sync_error_handler(void);
 
 
+
+
+
 /**
-  * @brief  This function return the ctrol id of the node.
+  * @brief  This function return the tx_delay by the id of the node.
+  *	@param uint8_t ctrl_table_idx : id of the source or receiver control structure.
+  * @retval : the tx_delay of the receiver.
+  */
+
+static uint16_t ctrl_get_delay_by_id(uint8_t creceiver_id)
+{
+	uint16_t rtx_delay;
+#if CTRL_MODE
+
+
+#else
+	rtx_delay = CTRL_GBAL_STR[creceiver_id].tx_delay;
+#endif	
+
+	return rtx_delay;
+
+}
+
+
+
+
+/**
+  * @brief  This function return the maximum slave delay by the id of the node.
+  *	@param uint8_t ctrl_table_idx : id of the source or receiver control structure.
+  * @retval : the max_slave_delay of the receiver.
+  */
+static uint16_t  ctrl_get_max_delay(uint8_t ctrl_table_idx)
+{
+	uint16_t max_delay;
+
+#if CTRL_MODE
+
+
+#else
+	max_delay = CTRL_GBAL_STR[ctrl_table_idx].slave_max_delay_diff;
+
+#endif	
+	return max_delay;
+
+}
+
+
+/**
+  * @brief  This function return the source id of the node.
   *	@param none
   * @retval : the control id of the node.
   */
-
 
 static uint8_t ctrl_get_source_id(void)
 {
@@ -98,7 +144,7 @@ static uint8_t ctrl_get_total_receives(void)
   *	@param uint8_t * buff : packet buffer
   * @retval : payload pointer.
   */
-uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,uint8_t cpkt_type, ctrl_sync_hdr * hdr, uint8_t *buff)
+static uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,uint8_t cpkt_type, ctrl_sync_hdr * hdr, uint8_t *buff)
 {
 	uint8_t * p = buff;
 	hdr->pkt_type = cpkt_type;
@@ -123,7 +169,7 @@ uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,uint8_t cpkt_type, ctrl_sy
   *	@param uint8_t * buff : packet buffer
   * @retval : payload pointer.
   */
-uint8_t create_ctrl_init_packet( uint8_t creceiver_id, uint8_t cpackets,ctrl_init_packet * init_pkt_str, uint8_t *buff )
+static uint8_t create_ctrl_init_packet( uint8_t creceiver_id, uint8_t cpackets,ctrl_init_packet * init_pkt_str, uint8_t *buff )
 {
 	uint8_t ret;
 	uint8_t * p = buff;
@@ -144,7 +190,17 @@ uint8_t create_ctrl_init_packet( uint8_t creceiver_id, uint8_t cpackets,ctrl_ini
 }
 
 
+/**
+  * @brief  This function return a ctrl_status_table associate to an source index.
+  * @param uint8_t _idx : source or destination index; 
+  * @retval ctrl_status_table *:  pointer to the control table index or null i case of error.
+  *
+  */
+static ctrl_status_table * get_ctrl_table_by_src_dest_index(uint8_t _idx){
 
+	if(source_idx > EXPECTED_NODES) return NULL;
+	return &CTRL_GBAL_STR[i];
+}
 
 
 
@@ -157,7 +213,7 @@ uint8_t create_ctrl_init_packet( uint8_t creceiver_id, uint8_t cpackets,ctrl_ini
   *	@param uint8_t * buff : packet buffer
   * @retval : payload pointer.
   */
-uint8_t create_ctrl_report_src_packet( uint8_t creceiver_id, ctrl_report_src_packet * src_report, uint8_t *buff )
+static uint8_t create_ctrl_report_src_packet( uint8_t creceiver_id, ctrl_report_src_packet * src_report, uint8_t *buff )
 {
 	uint8_t ret;
 	uint8_t * p = buff;
@@ -174,23 +230,225 @@ uint8_t create_ctrl_report_src_packet( uint8_t creceiver_id, ctrl_report_src_pac
 }
 
 
+/**
+  * @brief  This function process a control sync init packet.
+  * @param ctrl_init_packet * init_pack : input init packet to be processed; 
+  * @retval : none.
+  */
 
-send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type)
+
+static void process_init_packet(ctrl_init_packet * init_pack)
 {
-	uint8_t ret;
-	uint8_t tx_buffer[10];
 
-	if(pkt_type == INITIATOR)
+
+	CTRL_status = STARTING; /*in theory this has to be assocoate to each source */
+	uint8_t source_idx  = init_pack->header.source_id;
+	uint8_t node_id 	=  init_pack->header.receiver_id;
+	uint8_t squence_id  = init_pack->header.seq_id;
+	uint8_t t_receivers = init_pack->header.total_receivers;
+	uint8_t t_packets   = init_pack->header.total_packets;
+	uint16_t tx_delay	= init_pack.tx_delay;
+	uint16_t max_delay 	= init_pack.max_delay;
+
+
+	if(source_idx > EXPECTED_NODES)Ctrl_Sync_error_handler(); 
+
+	CTRL_GBAL_STR[source_idx].source_id=source_idx;
+	CTRL_GBAL_STR[source_idx].receiver_id=node_id;
+	CTRL_GBAL_STR[source_idx].seq_id=squence_id;
+	CTRL_GBAL_STR[source_idx].total_receivers=t_receivers;
+	CTRL_GBAL_STR[source_idx].total_packets=t_packets;
+	CTRL_GBAL_STR[source_idx].tx_delay= tx_delay;
+	CTRL_GBAL_STR[source_idx].slave_max_delay_diff=max_delay;
+
+	CTRL_status = IDLE;	
+
+}
+
+
+/**
+  * @brief  This function process a control sync report packet.
+  * @param ctrl_report_src_packet * report_pack : input report packet to be processed; 
+  * @retval : none.
+  */
+
+static void process_report_packet(ctrl_report_src_packet * report_pack)
+{
+	uint8_t tmp_id;
+	ctrl_status_table * temp_table;
+
+
+	tmp_id = report_pack->header.source_id;
+	temp_table = get_ctrl_table_by_source(tmp_id);
+
+	if( temp_table->receiver_id == report_pack->header.receiver_id)
 	{
-		
-		
+		temp_table->tx_delay = report_pack->tx_delay;
+		temp_table->slave_max_delay_diff = report_pack->slave_max_delay;
 	}
 
 }
 
 
+/**
+  * @brief  This function process the input packets arraiving form the BLE interface.
+  * @param uint16_t chandler : connection handler ossociated ; 
+  *	@param ctrl_report_src_packet * src_report: src report data-structure
+  *	@param uint8_t * buff : packet buffer
+  * @retval : none.
+  */
+
+void ctrl_input_packet_process(uint16_t chandler, 
+                            uint16_t attrhandler, 
+                            uint8_t data_length, 
+                            uint8_t *att_data, 
+                            tClockTime arval_time)
+{
+
+	uint8_t ret;
+	ctrl_sync_hdr ctrl_hdr;
+	ctrl_init_packet init_pack;
+	ctrl_report_src_packet report_pack;
 
 
+	if(attrhandler == ctrl_sync_tx_att.Associate_CharHandler+1)
+	{
+
+		ret = parse_ctrl_sync_packet_header(att_data,data_length,&ctrl_hdr);
+		if(ret==0)Ctrl_Sync_error_handler();
+		
+
+		if(ctrl_hdr->pkt_type == INITIATOR)
+		{
+			init_pack.header = ctrl_hdr;
+			ret += parse_ctrl_init_packet(att_data+ret, data_length-ret, &init_pack);
+			if(ret==0)Ctrl_Sync_error_handler();
+			process_init_packet(&init_pack);
+
+		}else if(ctrl_hdr->pkt_type == REPORT_SRC)
+		{
+			report_pack.header = ctrl_hdr;
+			ret += parse_ctrl_report_src_packet(att_data+ret,data_length-ret,&report_pack);
+			if(ret==0)Ctrl_Sync_error_handler();
+			process_report_packet();
+		}
+
+
+
+
+	}
+
+}
+
+
+/**
+  * @brief  This function send a control sync init or report packet.
+  * @param uint8_t creceiver_id: destination ID; 
+  *	@param  uint8_t pkt_type : packet type
+  * @retval : void.
+  */
+
+void send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type)
+{
+	tBleStatus res_ble;
+	uint8_t ret;
+	uint8_t tx_buffer[10];
+	ctrl_init_packet init_pck;
+	ctrl_report_src_packet src_report_pck;
+
+	if(pkt_type == INITIATOR)
+	{
+
+		ret = create_ctrl_init_packet(creceiver_id,&init_pck,tx_buffer);
+
+	}else if (pkt_type == REPORT_SRC){
+
+		ret create_ctrl_report_src_packet(creceiver_id,&src_report_pck,tx_buffer);
+
+	}
+
+	if(ret==0)Ctrl_Sync_error_handler();
+	res_ble = aci_gatt_update_char_value(ctrl_sync_service.ServiceHandle,ctrl_sync_tx_att.CharHandle,0,ret,tx_buffer);
+	 if(res_ble!= BLE_STATUS_SUCCESS)Ctrl_Sync_error_handler(); 
+
+}
+
+
+
+/**
+  * @brief  This function parse and input control-sync init or report packet header.
+  * @param  uint8_t * data : buffer input data.
+  *	@param  uint8_t data_len : total length of the input data.
+  *	@param  ctrl_sync_hdr * hdr : header data_structure. 
+  * @retval : payload pointer offset.
+  */
+static uint8_t  parse_ctrl_sync_packet_header(uint8_t * data, uint8_t data_len, ctrl_sync_hdr * hdr)
+{
+	uint8_t * p;
+
+	if(data_len < 4)
+	{
+		/*something is wrong return 0*/
+		return 0;
+	}
+
+	p=data;
+
+	hdr->pkt_type = 		p[0];
+	hdr->source_id =		p[1];
+	hdr->receiver_id =		p[2];
+	hdr->total_receivers =  p[3];
+
+	return 4; 
+
+}
+
+
+/**
+  * @brief  This function parse and input control-sync init packet header.
+  * @param  uint8_t * data : buffer input data.
+  *	@param  uint8_t data_len : total length of the input data.
+  *	@param  ctrl_init_packet * ctrl_pack : init_data_structure. 
+  * @retval : payload pointer offset.
+  */
+static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len,ctrl_init_packet * init_pack)
+{
+	uint8_t ret=0;
+	uint8_t * p = data;
+	
+	init_pack->total_packets = p[0];
+
+	init_pack->tx_delay = 	(p[1] & 0x00FF << 8) |
+						  	(p[2] & 0xFF);
+
+	init_pack->slave_max_delay = (p[3] & 0x00FF << 8) |
+								 (p[4] & 0xFF);
+
+	ret+=5;							 
+}
+
+
+/**
+  * @brief  This function parse and input control-sync source report packet header.
+  * @param  uint8_t * data : buffer input data.
+  *	@param  uint8_t data_len : total length of the input data.
+  *	@param  ctrl_report_src_packet * ctrl_pack : source_report_data_structure. 
+  * @retval : payload pointer offset.
+  */
+static uint8_t  parse_ctrl_report_src_packet(uint8_t * data, uint8_t data_len,ctrl_report_src_packet * report_pack)
+{
+	uint8_t ret=0;
+	uint8_t * p = data;
+	
+
+	report_pack->tx_delay = 	(p[0] & 0x00FF << 8) |
+						  		(p[1] & 0xFF);
+
+	report_pack->slave_max_delay = (p[2] & 0x00FF << 8) |
+								   (p[3] & 0xFF);
+
+	ret+=4;							 
+}
 
 
 
@@ -274,7 +532,8 @@ void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets)
 /*not_ptp then uses the static config*/	
 total_receivers = no_receivers;
 	for(i=0; i < no_receivers; i++)
-	{
+	{	
+		CTRL_GBAL_STR[i].source_id = ctrl_get_source_id();
 		CTRL_GBAL_STR[i].receiver_id = i+1;
 		CTRL_GBAL_STR[i].seq_id = 0;
 		CTRL_GBAL_STR[i].total_receivers=no_receivers;
@@ -304,17 +563,37 @@ uint8_t i;
 		{
 			case STARTING:
 			{
+				CTRL_status = SYNCRONIZING;
 				for(i=0; i < total_receivers; i++)
-				send_ctrl_sync_packet()
-
+					send_ctrl_sync_packet(i,INITIATOR);
+				ctrl_peding_packet=0;			
+				CTRL_status = IDLE;
 			}
 			break;
+			case IDLE:
+			{
+				CTRL_status = SYNCRONIZING;
+				for(i=0; i < total_receivers; i++)
+					send_ctrl_sync_packet(i,REPORT_SRC);
+				ctrl_peding_packet=0;
+				CTRL_status = IDLE;
+
+			}
 
 		}
 	}
-	
-		
+			
 }
+
+
+
+
+
+void Ctrl_Sync_dynamic_sync(void)
+{
+	/*used to support the PTP protocol*/
+}
+
 
 
 
