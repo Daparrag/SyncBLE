@@ -7,7 +7,13 @@
 #include "app_ble.h"
 #include "network.h"
 #include "ptp_interrupt.h"
+
+#ifdef TEST_CLIENT
+#include "media_sync_client.h"
+#elif TEST_SERVER	
 #include "media_sync_server.h"
+#endif
+
 
 
 void ctrl_sync_test_server(void);

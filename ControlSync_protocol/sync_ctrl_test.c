@@ -20,8 +20,8 @@
 
 app_profile_t PROFILE;
 
-const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE1}; /*device addrs*/
-const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','O','N','E',}; /*device name*/
+//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE1}; /*device addrs*/
+//const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','O','N','E',}; /*device name*/
 
 //slave 1
 //const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE2}; /*device addrs*/
@@ -29,8 +29,8 @@ const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','O','N','
 
 
 //slave 2
-//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE3}; /*device addrs*/
-//const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','H','R','E','E'}; /*device name*/                            
+const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE3}; /*device addrs*/
+const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','H','R','E','E'}; /*device name*/                            
 
 
 //slave 3
@@ -138,9 +138,9 @@ void ctrl_sync_test_client()
     /*3.0 initialize the control_sync_application*/
      Ctrl_Sync_init(&PROFILE);
     /*4.0 init the the network module*/
-  	network_t * network_config;
-  	ret_net = init_network(NET_CONNECTED, DEVICE_CENTRAL,0x2,&network_config);   
-  	if(ret_net != NET_SUCCESS)Error_Handler();
+  	 network_t * network_config;      
+      ret_net = init_network(NET_CONNECTED, DEVICE_PERISPHERAL,0x2,&network_config);
+       if(ret_net != NET_SUCCESS)Error_Handler();  
   	ret_net = net_setup_profile_definition (&PROFILE,NULL,0);/*this implementation only contain one server */
       if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
 
@@ -150,9 +150,11 @@ void ctrl_sync_test_client()
 		network_process();
 		HCI_Packet_Release_Event_CB();	
 
-	}while(network_process() != NET_SUCCESS);
+	}while(network_get_status() != 1);
 
-
+  while(1);
+  
+  
 
 
 
