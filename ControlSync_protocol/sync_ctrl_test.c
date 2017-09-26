@@ -67,19 +67,13 @@ APP_Status ret_app;
     if(ret_app!=APP_SUCCESS)while(1);/*an error occur*/
 
 /*1.1 initialize the control_sync_application*/
-     Init_Ctrl_Sync_application(&PROFILE);
+     Ctrl_Sync_init(&PROFILE);
 /*2. init the the network module*/
   	       network_t * network_config;
   	       ret_net = init_network(NET_CONNECTED, DEVICE_CENTRAL,0x2,&network_config);   
   	        if(ret_net != NET_SUCCESS)Error_Handler();
 
-/*3. associate this profile to both connections*/           
-       uint8_t list_index [] = {0,1};
-      ret_net = net_setup_profile_definition (&PROFILE,list_index,sizeof(list_index));
-      if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
-     connection_handler_set_discovery_config(&DISC_config);
-
-/*4. Since for this test we only need the to indcate an static configuration parameters form the 
+/*3. Since for this test we only need the to indcate an static configuration parameters form the 
  *	 media-synchonization-server we could avoid discover services and characteristics at the server 
  *   that contain the data to be used by the clients.
  *
@@ -87,9 +81,20 @@ APP_Status ret_app;
 
 */
 #if (!CTRL_MODE)
-	ret_net= service_handler_config(DONT_FIND_SERVICE,DONT_FIND_CHAR,NULL,0);
+         uint8_t list_index [] = {0,1};        
+	ret_net= service_handler_config(DONT_FIND_SERVICE,DONT_FIND_CHAR,list_index,2);
 	 if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
+#else
+ uint8_t list_index [] = {0,1}; 
 #endif 
+                
+                               
+/*4. associate this profile to both connections*/           
+      
+      ret_net = net_setup_profile_definition (&PROFILE,list_index,sizeof(list_index));
+      if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
+     connection_handler_set_discovery_config(&DISC_config);
+
 
 /*5 run the connection procedure until the connection 
 	and service discovery is sucessed*/
@@ -97,7 +102,7 @@ APP_Status ret_app;
 		network_process();
 		HCI_Packet_Release_Event_CB();	
 
-	}while(network_process() != DEVICE_READY)
+	}while(network_process() != 1);
 
 
 /*5. lets start the control sync_process at the media synchonization server*/
@@ -130,12 +135,27 @@ void ctrl_sync_test_client()
 	  /*2.0 initialize the device*/ 
      ret_app = APP_Init_BLE();
     if(ret_app!=APP_SUCCESS)while(1);/*an error occur*/
+    /*3.0 initialize the control_sync_application*/
+     Ctrl_Sync_init(&PROFILE);
+    /*4.0 init the the network module*/
+  	network_t * network_config;
+  	ret_net = init_network(NET_CONNECTED, DEVICE_CENTRAL,0x2,&network_config);   
+  	if(ret_net != NET_SUCCESS)Error_Handler();
+  	ret_net = net_setup_profile_definition (&PROFILE,NULL,0);/*this implementation only contain one server */
+      if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
 
-    /*1.1 initialize the control_sync_application*/
-     Init_Ctrl_Sync_application(&PROFILE);
+  	/*5.0 run the connection procedure until the connection 
+	and service discovery is sucessed*/
+	do{
+		network_process();
+		HCI_Packet_Release_Event_CB();	
 
-     /*4.0 init the the network module*/
-     
+	}while(network_process() != NET_SUCCESS);
+
+
+
+
+
      
 
 }

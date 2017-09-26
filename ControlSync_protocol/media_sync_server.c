@@ -49,7 +49,7 @@ static const uint8_t  sync_control_TXchar_uuid[16] = { 0x66,0x9a,0x0c,
 		0x20,0x00,0x08,0x96,0x9e,0xe2,0x11,0x9f,0xb1,0xe1,0xf2,0x73,
 		0xd9};
 
-static cstr_ctrl_sync CTRL_SYNC_STR[EXPECTED_NODES];
+static ctrl_status_table CTRL_SYNC_STR[EXPECTED_NODES];
 static ctrl_sync_status  CTRL_status = UNSTARTED;
 static app_service_t ctrl_sync_service;
 static app_attr_t ctrl_sync_tx_att;
@@ -81,7 +81,6 @@ static uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,
 									   uint8_t *buff);
 
 static uint8_t create_ctrl_init_packet( uint8_t creceiver_id, 
-										uint8_t cpackets,
 										ctrl_init_packet * init_pkt_str, 
 										uint8_t *buff );
 
@@ -95,7 +94,7 @@ static void process_init_packet(ctrl_init_packet * init_pack);
 
 static void process_report_packet(ctrl_report_src_packet * report_pack);
 
-static void send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type);
+static void send_ctrl_sync_packet(uint8_t creceiver_id, uint8_t pkt_type);
 
 static uint8_t  parse_ctrl_sync_packet_header(uint8_t * data, 
 											  uint8_t data_len, 
@@ -140,7 +139,15 @@ static uint16_t ctrl_get_delay_by_id(uint8_t creceiver_id)
 
 }
 
-
+static uint8_t ctrl_get_seq_id (uint8_t _idx)
+{
+  uint8_t seq; 
+  
+  	if(_idx > EXPECTED_NODES) return 0;
+          seq = CTRL_GBAL_STR[_idx].seq_id;
+          CTRL_GBAL_STR[_idx].seq_id+=1;
+        return seq;
+}
 
 
 /**
@@ -162,6 +169,14 @@ static uint16_t  ctrl_get_max_delay(uint8_t ctrl_table_idx)
 	return max_delay;
 
 }
+static uint8_t ctrl_get_packets_to_tx(uint8_t client_idx)
+{
+    if(client_idx > EXPECTED_NODES) return 0;
+   return  CTRL_GBAL_STR[client_idx].total_packets;
+  
+}
+
+
 
 
 /**
@@ -205,6 +220,7 @@ static uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,uint8_t cpkt_type, 
 	hdr->source_id = ctrl_get_source_id();
 	hdr->receiver_id = creceiver_id;
 	hdr->total_receivers = ctrl_get_total_receives();
+        hdr->seq_id= ctrl_get_seq_id(creceiver_id);
 	*p++=hdr->pkt_type;
 	*p++=hdr->source_id;
 	*p++=hdr->receiver_id;
@@ -223,21 +239,21 @@ static uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,uint8_t cpkt_type, 
   *	@param uint8_t * buff : packet buffer
   * @retval : payload pointer.
   */
-static uint8_t create_ctrl_init_packet( uint8_t creceiver_id, uint8_t cpackets,ctrl_init_packet * init_pkt_str, uint8_t *buff )
+static uint8_t create_ctrl_init_packet( uint8_t creceiver_id,ctrl_init_packet * init_pkt_str, uint8_t *buff )
 {
 	uint8_t ret;
 	uint8_t * p = buff;
 
-	ret = create_ctrl_packet_hdr (creceiver_id,&(init_pkt_str->header),buff);
-	init_pkt_str->total_packets = cpackets;
+	ret = create_ctrl_packet_hdr (creceiver_id,INITIATOR,&(init_pkt_str->header),buff);
+	init_pkt_str->total_packets = ctrl_get_packets_to_tx(creceiver_id);
 	init_pkt_str->tx_delay = ctrl_get_delay_by_id(creceiver_id);
-	init_pkt_str->slave_max_delay = ctrl_get_max_delay();
-	p + = ret;
-	*p++ = init_pkt_str->total_packets = cpackets;
-	*p++=  ((init_pkt_str->tx_delay & 0xFF00) >> 8);
-	*p++=  (init_pkt_str->tx_delay & 0xFF);
-	*p++=	((init_pkt_str->slave_max_delay & 0xFF00) >> 8);
-	*p++=	(init_pkt_str->slave_max_delay & 0xFF);
+	init_pkt_str->slave_max_delay = ctrl_get_max_delay(creceiver_id);
+	 p += ret;
+	*p++ = init_pkt_str->total_packets;
+	*p++ = ((init_pkt_str->tx_delay & 0xFF00) >> 8);
+	*p++ = (init_pkt_str->tx_delay & 0xFF);
+	*p++ = ((init_pkt_str->slave_max_delay & 0xFF00) >> 8);
+	*p++ = (init_pkt_str->slave_max_delay & 0xFF);
 
 	return (p - buff); 
 
@@ -252,8 +268,8 @@ static uint8_t create_ctrl_init_packet( uint8_t creceiver_id, uint8_t cpackets,c
   */
 static ctrl_status_table * get_ctrl_table_by_src_dest_index(uint8_t _idx){
 
-	if(source_idx > EXPECTED_NODES) return NULL;
-	return &CTRL_GBAL_STR[i];
+	if(_idx > EXPECTED_NODES) return NULL;
+	return &CTRL_GBAL_STR[_idx];
 }
 
 
@@ -271,15 +287,15 @@ static uint8_t create_ctrl_report_src_packet( uint8_t creceiver_id, ctrl_report_
 {
 	uint8_t ret;
 	uint8_t * p = buff;
-	ret = create_ctrl_packet_hdr (creceiver_id,&(src_report->header),buff);
+        
+	ret = create_ctrl_packet_hdr (creceiver_id,REPORT_SRC,&(src_report->header),buff);
 	src_report->tx_delay = ctrl_get_delay_by_id(creceiver_id);
-	src_report->slave_max_delay = ctrl_get_max_delay();
-	p + = ret;
-
-	*p++=  ((init_pkt_str->tx_delay & 0xFF00) >> 8);
-	*p++=  (init_pkt_str->tx_delay & 0xFF);
-	*p++=	((init_pkt_str->slave_max_delay & 0xFF00) >> 8);
-	*p++=	(init_pkt_str->slave_max_delay & 0xFF);
+	src_report->slave_max_delay = ctrl_get_max_delay(creceiver_id);
+	p += ret;
+	*p++=  ((src_report->tx_delay & 0xFF00) >> 8);
+	*p++=  (src_report->tx_delay & 0xFF);
+	*p++=	((src_report->slave_max_delay & 0xFF00) >> 8);
+	*p++=	(src_report->slave_max_delay & 0xFF);
 	return (p - buff); 
 }
 
@@ -297,12 +313,12 @@ static void process_init_packet(ctrl_init_packet * init_pack)
 
 	CTRL_status = STARTING; /*in theory this has to be assocoate to each source */
 	uint8_t source_idx  = init_pack->header.source_id;
-	uint8_t node_id 	=  init_pack->header.receiver_id;
+	uint8_t node_id     = init_pack->header.receiver_id;
 	uint8_t squence_id  = init_pack->header.seq_id;
 	uint8_t t_receivers = init_pack->header.total_receivers;
-	uint8_t t_packets   = init_pack->header.total_packets;
-	uint16_t tx_delay	= init_pack.tx_delay;
-	uint16_t max_delay 	= init_pack.max_delay;
+	uint8_t t_packets   = init_pack->total_packets;
+	uint16_t tx_delay   = init_pack->tx_delay;
+	uint16_t max_delay  = init_pack->slave_max_delay;
 
 
 	if(source_idx > EXPECTED_NODES)Ctrl_Sync_error_handler(); 
@@ -333,7 +349,7 @@ static void process_report_packet(ctrl_report_src_packet * report_pack)
 
 
 	tmp_id = report_pack->header.source_id;
-	temp_table = get_ctrl_table_by_source(tmp_id);
+	temp_table = get_ctrl_table_by_src_dest_index(tmp_id);
 
 	if( temp_table->receiver_id == report_pack->header.receiver_id)
 	{
@@ -372,19 +388,19 @@ void ctrl_input_packet_process(uint16_t chandler,
 		if(ret==0)Ctrl_Sync_error_handler();
 		
 
-		if(ctrl_hdr->pkt_type == INITIATOR)
+		if(ctrl_hdr.pkt_type == INITIATOR)
 		{
 			init_pack.header = ctrl_hdr;
 			ret += parse_ctrl_init_packet(att_data+ret, data_length-ret, &init_pack);
 			if(ret==0)Ctrl_Sync_error_handler();
 			process_init_packet(&init_pack);
 
-		}else if(ctrl_hdr->pkt_type == REPORT_SRC)
+		}else if(ctrl_hdr.pkt_type == REPORT_SRC)
 		{
 			report_pack.header = ctrl_hdr;
 			ret += parse_ctrl_report_src_packet(att_data+ret,data_length-ret,&report_pack);
 			if(ret==0)Ctrl_Sync_error_handler();
-			process_report_packet();
+			process_report_packet(&report_pack);
 		}
 
 
@@ -402,7 +418,7 @@ void ctrl_input_packet_process(uint16_t chandler,
   * @retval : void.
   */
 
-static void send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type)
+static void send_ctrl_sync_packet(uint8_t creceiver_id, uint8_t pkt_type)
 {
 	tBleStatus res_ble;
 	uint8_t ret;
@@ -417,7 +433,7 @@ static void send_ctrl_sync_packet(creceiver_id, uint8_t pkt_type)
 
 	}else if (pkt_type == REPORT_SRC){
 
-		ret create_ctrl_report_src_packet(creceiver_id,&src_report_pck,tx_buffer);
+		ret = create_ctrl_report_src_packet(creceiver_id,&src_report_pck,tx_buffer);
 
 	}
 
@@ -478,7 +494,8 @@ static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len,ctrl_ini
 	init_pack->slave_max_delay = (p[3] & 0x00FF << 8) |
 								 (p[4] & 0xFF);
 
-	ret+=5;							 
+	ret+=5;
+        return ret;
 }
 
 
@@ -501,7 +518,9 @@ static uint8_t  parse_ctrl_report_src_packet(uint8_t * data, uint8_t data_len,ct
 	report_pack->slave_max_delay = (p[2] & 0x00FF << 8) |
 								   (p[3] & 0xFF);
 
-	ret+=4;							 
+	ret+=4;	
+        
+        return ret;
 }
 
 
@@ -550,7 +569,7 @@ void Ctrl_Sync_init(app_profile_t * profile)
   * @retval : control synchonization status.
   */
 
-ctrl_sync_status Ctrl_Sync_status(void)
+ctrl_sync_status Get_Ctrl_Sync_status(void)
 {
 	return CTRL_status;
 }
@@ -594,7 +613,7 @@ total_receivers = no_receivers;
 		CTRL_GBAL_STR[i].total_receivers=no_receivers;
 		CTRL_GBAL_STR[i].total_packets = no_packets;
 		CTRL_GBAL_STR[i].tx_delay = TX_INTERVAL;
-		CTRL_GBAL_STR[i].inter_slave_delay = EXPECTED_DELAY * (1-i);
+		CTRL_GBAL_STR[i].slave_max_delay_diff = EXPECTED_DELAY * (1-i);
 	}
 
 		ctrl_peding_packet = 1;
@@ -719,8 +738,8 @@ void Ctrl_Sync_send_packet(uint8_t id_receiver)
 	tx_buff[3]=CTRL_SYNC_STR[id_receiver].total_packets;
 	tx_buff[4]=((CTRL_SYNC_STR[id_receiver].tx_delay & 0xFF00) >> 8);
 	tx_buff[5]=((CTRL_SYNC_STR[id_receiver].tx_delay) & 0xFF);
-	tx_buff[6]=((CTRL_SYNC_STR[id_receiver].inter_slave_delay & 0xFF00) >> 8);
-	tx_buff[7]=((CTRL_SYNC_STR[id_receiver].inter_slave_delay) & 0xFF);
+	tx_buff[6]=((CTRL_SYNC_STR[id_receiver].slave_max_delay_diff & 0xFF00) >> 8);
+	tx_buff[7]=((CTRL_SYNC_STR[id_receiver].slave_max_delay_diff) & 0xFF);
         CTRL_SYNC_STR[id_receiver].seq_id +=1;
         res_ble = aci_gatt_update_char_value(ctrl_sync_service.ServiceHandle,ctrl_sync_tx_att.CharHandle,0,8,tx_buff);
          if(res_ble!= BLE_STATUS_SUCCESS)Ctrl_Sync_error_handler(); 

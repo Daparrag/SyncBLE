@@ -50,10 +50,11 @@ typedef enum
 /*header definition*/
 
 typedef struct{
-uint8_t pkt_type; 					/*8bits*/
-uint8_t source_id;					/*8bits*/
+uint8_t pkt_type; 				/*8bits*/
+uint8_t source_id;				/*8bits*/
 uint8_t receiver_id;				/*8bits*/
-uint8_t total_receivers;			/*8bits*/			
+uint8_t total_receivers;                        /*8bits*/
+uint8_t  seq_id;
 }ctrl_sync_hdr; /*4bytes*/
 
 
@@ -115,7 +116,7 @@ void ctrl_input_packet_process(uint16_t chandler,
                             uint8_t *att_data, 
                             tClockTime arval_time);
 
-void ctrl_sync_status Ctrl_Sync_status(void);
+ctrl_sync_status Get_Ctrl_Sync_status(void);
 
 void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets);
 
