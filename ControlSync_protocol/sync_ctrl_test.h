@@ -8,6 +8,8 @@
 #include "network.h"
 #include "ptp_interrupt.h"
 
+#define TEST_CLIENT
+
 #ifdef TEST_CLIENT
 #include "media_sync_client.h"
 #elif TEST_SERVER	
@@ -18,4 +20,5 @@
 
 void ctrl_sync_test_server(void);
 void ctrl_sync_test_client(void);
+void Ctrl_Sync_client_process(void);
 #endif /*ptp_test*/

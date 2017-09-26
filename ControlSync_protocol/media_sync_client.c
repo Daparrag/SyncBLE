@@ -752,6 +752,26 @@ void Ctrl_Sync_send_packet(uint8_t id_receiver)
 
 void Ctrl_Sync_client_process(){
 
+event_t * event;
+event = (event_t *)HCI_Get_Event_CB();
+
+if(event!=NULL && event->event_type == EVT_BLUE_GATT_ATTRIBUTE_MODIFIED){
+
+		uint8_t hw_version = get_harware_version();
+        if(hw_version==IDB05A1){
+	         
+	          evt_gatt_attr_modified_IDB05A1 *evt = (evt_gatt_attr_modified_IDB05A1*)event->evt_data;
+	          ctrl_input_packet_process(
+	          	evt->conn_handle,
+                evt->attr_handle,
+                evt->data_length,
+                evt->att_data,
+                event->ISR_timestamp
+	          	);
+	      }
+
+	}
+
 
 
 }

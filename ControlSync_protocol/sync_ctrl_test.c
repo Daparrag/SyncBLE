@@ -20,8 +20,11 @@
 
 app_profile_t PROFILE;
 
-//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE1}; /*device addrs*/
-//const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','O','N','E',}; /*device name*/
+#ifdef TEST_SERVER
+const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE1}; /*device addrs*/
+const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','O','N','E',}; /*device name*/
+
+#elif TEST_CLIENT
 
 //slave 1
 //const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE2}; /*device addrs*/
@@ -36,7 +39,7 @@ const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','H','
 //slave 3
 //const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE4}; /*device addrs*/
 //const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','F','O','U','R'}; /*device name*/                            
-
+#endif
 
 
 /*specified address list */
@@ -152,7 +155,10 @@ void ctrl_sync_test_client()
 
 	}while(network_get_status() != 1);
 
-  while(1);
+  while(1){
+    Ctrl_Sync_client_process();
+    HCI_Packet_Release_Event_CB();
+  }
   
   
 

@@ -122,7 +122,7 @@ void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets);
 
 void Ctrl_Sync_send_pending_packets(void);
 
-void Ctrl_Sync_client_process();
+void Ctrl_Sync_client_process(void);
 
 
 
