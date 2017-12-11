@@ -8,11 +8,13 @@
 #include "network.h"
 #include "ptp_interrupt.h"
 
-#define TEST_CLIENT
+#define TEST_SERVER
 
 #ifdef TEST_CLIENT
 #include "media_sync_client.h"
-#elif TEST_SERVER	
+#endif
+
+#ifdef TEST_SERVER
 #include "media_sync_server.h"
 #endif
 

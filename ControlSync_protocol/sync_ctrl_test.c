@@ -32,8 +32,8 @@ const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','O','N','
 
 
 //slave 2
-const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE3}; /*device addrs*/
-const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','H','R','E','E'}; /*device name*/                            
+//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE3}; /*device addrs*/
+//const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','H','R','E','E'}; /*device name*/                            
 
 
 //slave 3
@@ -105,7 +105,7 @@ APP_Status ret_app;
 		network_process();
 		HCI_Packet_Release_Event_CB();	
 
-	}while(network_process() != 1);
+	}while(network_get_status() != 1);
 
 
 /*5. lets start the control sync_process at the media synchonization server*/

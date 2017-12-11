@@ -59,6 +59,11 @@ uint16_t inter_slave_delay;
 }cstr_ctrl_sync;
 
 
+void Ctrl_Sync_init(app_profile_t * profile);
+ctrl_sync_status Ctrl_Sync_status(void);
+void Ctrl_Sync_set_status(ctrl_sync_status status);
+void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets);
+void Ctrl_Sync_connection_interval_handler();
 
 
 
