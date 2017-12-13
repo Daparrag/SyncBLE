@@ -103,6 +103,7 @@ typedef struct
 	uint8_t total_packets;
 	uint16_t tx_delay;
 	uint16_t slave_max_delay_diff;			//16bits//
+        uint8_t notify_enable;
 }ctrl_status_table;
 
 
