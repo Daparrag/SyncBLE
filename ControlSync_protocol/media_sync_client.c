@@ -1,25 +1,25 @@
 /*sync_control_interface*/
 /*
-* this interface is used to inform and provide synhonization parameters for BLE applications
-* this could take advantage of the ptp_ synchonization mechanims development in a previous relase
+* this interface is used to inform and provide synchronization parameters for BLE applications
+* this could take advantage of the ptp_ synchronization mechanism development in a previous relase
 */
 
 /* Operation modes:
 *
-* a) using the ptp protocol for clock synchonization and timestamp solution
-* b) static control mechanims based on the connection interval and 
+* a) using the PTP protocol for clock synchronization and time-stamp solution
+* b) static control mechanism based on the connection interval and
 *    connection length configuration.
 *
 */
 
 
 /*Task:
-* 1) start the synchonization control process it could envolve  the 
-	 PTP synchonization app or report to the slaves the static synchonization paramenters .
+* 1) start the synchronization control process it could evolve  the
+	 PTP synchronization API or report to the slaves the static synchronization paramenters .
 
-* 2) inform to the appliations the status of the synchonization, 
-	 as well the synchonization parameters used posteriously to 
-	 timestamp the data by the application
+* 2) inform to the applications the status of the synchronization,
+	 as well the synchronization parameters used posteriorly to
+	 time-stamp the data by the application
 */
 
 
@@ -115,7 +115,7 @@ static uint8_t ctrl_disable_notify(uint16_t chandler);
 
 
 /**
-  * @brief  This function enable the notificiation to the remote control node.
+  * @brief  This function enable the notification to the remote control node.
   *	@param uint8_t uint16_t chandler : Connection Handler Needed To enable the notification.
   * @retval : true is success or false if fail.
   */
@@ -131,7 +131,7 @@ static uint8_t ctrl_sync_enable_notify(uint16_t chandler){
 }
 
 /**
-  * @brief  This function desable the notificiation to the remote control node.
+  * @brief  This function disable the notification to the remote control node.
   *	@param uint8_t uint16_t chandler : Connection Handler Needed To enable the notification.
   * @retval : true is success or false if fail.
   */
@@ -223,7 +223,7 @@ static uint8_t ctrl_get_source_id(void)
 /**
   * @brief  This function return the number of receivers for a single sync group.
   *	@param none
-  * @retval : number of receivers within a synchonization group
+  * @retval : number of receivers within a synchronization group
   * @note : this version only support one syncgroup.
   */
 static uint8_t ctrl_get_total_receives(void)
@@ -261,7 +261,7 @@ static uint8_t create_ctrl_packet_hdr( uint8_t creceiver_id ,uint8_t cpkt_type, 
 /**
   * @brief  This function creates a control sync init packet.
   * @param uint8_t creceiver_id; 
-  *	@param uint8_t cpackets: num_packets to trasmit default use 0.
+  *	@param uint8_t cpackets: num_packets to transmit default use 0.
   *	@param ctrl_init_packet * init_pkt_str : control init datastructure
   *	@param uint8_t * buff : packet buffer
   * @retval : payload pointer.
@@ -338,7 +338,7 @@ static void process_init_packet(ctrl_init_packet * init_pack)
 {
 
 
-	CTRL_status = STARTING; /*in theory this has to be assocoate to each source */
+	CTRL_status = STARTING; /*in theory this has to be associate to each source */
 	uint8_t source_idx  = init_pack->header.source_id;
 	uint8_t node_id     = init_pack->header.receiver_id;
 	uint8_t squence_id  = init_pack->header.seq_id;
@@ -388,8 +388,8 @@ static void process_report_packet(ctrl_report_src_packet * report_pack)
 
 
 /**
-  * @brief  This function process the input packets arraiving form the BLE interface.
-  * @param uint16_t chandler : connection handler ossociated ; 
+  * @brief  This function process the input packets arriving form the BLE interface.
+  * @param uint16_t chandler : connection handler associated ;
   *	@param ctrl_report_src_packet * src_report: src report data-structure
   *	@param uint8_t * buff : packet buffer
   * @retval : none.
@@ -547,7 +547,7 @@ static uint8_t  parse_ctrl_report_src_packet(uint8_t * data, uint8_t data_len,ct
 
 
 /**
-  * @brief  This function initializes the contol synchonization protocol.
+  * @brief  This function initializes the control synchronization protocol.
   * @param  app_profile_t * profile : profile to associate the service. 
   * @retval : none.
   */
@@ -585,9 +585,9 @@ void Ctrl_Sync_init(app_profile_t * profile)
 }
 
 /**
-  * @brief  This function return the status of the synchonization protocol.
+  * @brief  This function return the status of the synchronization protocol.
   * @param  none
-  * @retval : control synchonization status.
+  * @retval : control synchronization status.
   */
 
 ctrl_sync_status Get_Ctrl_Sync_status(void)
@@ -596,8 +596,8 @@ ctrl_sync_status Get_Ctrl_Sync_status(void)
 }
 
 /**
-  * @brief  This function force a specific status of the synchonization protocol.
-  * @param  ctrl_sync_status status: control synchonization status
+  * @brief  This function force a specific status of the synchronization protocol.
+  * @param  ctrl_sync_status status: control synchronization status
   * @retval : none
   */
 void Ctrl_Sync_set_status(ctrl_sync_status status)
@@ -609,9 +609,9 @@ void Ctrl_Sync_set_status(ctrl_sync_status status)
 
 
 /**
-  * @brief  This function is used at the begining of the media transmission 
-  			to sent the initialization parameters to all the synchonization-media-clients.
-  * @param  uint8_t no_receivers : indicates the number of recevers.
+  * @brief  This function is used at the beginning of the media transmission
+  			to sent the initialization parameters to all the synchronization-media-clients.
+  * @param  uint8_t no_receivers : indicates the number of receivers.
   * @param  uint8_t no_packets : optional number of packets to transmit.
   * @retval : none
   */

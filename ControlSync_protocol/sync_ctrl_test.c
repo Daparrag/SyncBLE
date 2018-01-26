@@ -26,9 +26,10 @@ const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','O','N','
 
 #elif TEST_CLIENT
 
+//chose properly
 //slave 1
-//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE2}; /*device addrs*/
-//const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','W','O'}; /*device name*/                            
+const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE2}; /*device addrs*/
+const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','W','O'}; /*device name*/
 
 
 //slave 2
@@ -53,8 +54,8 @@ void ctrl_sync_test_server()
 {
 
 /* 
- * this is the control media synchonization process used to indicate a set of clients the configuration parameters
- * used to interdestination synchronization. Each application have to ajust the presentation time according to this parameters
+ * this is the control media synchronization process used to indicate a set of clients the configuration parameters
+ * used to inter-destination synchronization. Each application have to adjust the presentation time according to this parameters
  * independent of this protocol.
  * 
  *
@@ -76,11 +77,11 @@ APP_Status ret_app;
   	       ret_net = init_network(NET_CONNECTED, DEVICE_CENTRAL,0x2,&network_config);   
   	        if(ret_net != NET_SUCCESS)Error_Handler();
 
-/*3. Since for this test we only need the to indcate an static configuration parameters form the 
- *	 media-synchonization-server we could avoid discover services and characteristics at the server 
+/*3. Since for this test we only need the to indicate an static configuration parameters form the
+ *	 media-synchronization-server we could avoid discover services and characteristics at the server
  *   that contain the data to be used by the clients.
  *
- * in this case  of uses a ptp-prtocol to synchonize the clock of the  clients you must to avoid this line  
+ * in this case  of uses a PTP-protocol to synchronize the clock of the  clients you must to avoid this line
 
 */
 #if (!CTRL_MODE)
@@ -100,7 +101,7 @@ APP_Status ret_app;
 
 
 /*5 run the connection procedure until the connection 
-	and service discovery is sucessed*/
+	and service discovery is successes*/
 	do{
 		network_process();
 		HCI_Packet_Release_Event_CB();	
@@ -108,7 +109,7 @@ APP_Status ret_app;
 	}while(network_get_status() != 1);
 
 
-/*5. lets start the control sync_process at the media synchonization server*/
+/*5. lets start the control sync_process at the media synchronization server*/
 	uint8_t receivers = NET_get_num_connections();	
 /*6. initialize the connection interval interruption*/
 	BlueNRG_ConnInterval_IRQ_enable();
@@ -126,8 +127,8 @@ void ctrl_sync_test_client()
 {
 
 /* 
- * this is the control media synchonization process used to receive the configuration parameters used to interdestination synchronization. 
- * Each application have to ajust the presentation time according to this parameters independent of this protocol.
+ * this is the control media synchronization process used to receive the configuration parameters used to inter-destination synchronization.
+ * Each application have to adjust the presentation time according to this parameters independent of this protocol.
  *
 */
 	 static NET_Status ret_net;
@@ -148,7 +149,7 @@ void ctrl_sync_test_client()
       if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
 
   	/*5.0 run the connection procedure until the connection 
-	and service discovery is sucessed*/
+	and service discovery is successes*/
 	do{
 		network_process();
 		HCI_Packet_Release_Event_CB();	

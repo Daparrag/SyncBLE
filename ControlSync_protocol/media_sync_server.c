@@ -1,26 +1,26 @@
 /*sync_control_interface*/
 /*
-* this interface is used to stream synchonously data for BLE applications
-* this could take advantage of the ptp_ synchonization mechanims development in a previous relase
+* this interface is used to stream synchronously data for BLE applications
+* this could take advantage of the ptp_ synchronization mechanism development in a previous release
 */
 
 /* Operation modes:
 *
-* a) using the ptp protocol for clock synchonization and timestamp solution
-* b) static control mechanims based on the connection interval and 
+* a) using the PTP protocol for clock synchronization and time-stamp solution
+* b) static control mechanism based on the connection interval and
 *    connection length configuration.
 *
 */
 
 
 /*Task:
-* 1) start the synchonization process it could envolve to start the 
-	 PTP synchonization app or report to the slaves the synchonization paramenters 
-	 to present the data synchonously.
+* 1) start the synchronization process it could evolve to start the
+	 PTP synchronization API or report to the slaves the synchronization parameters
+	 to present the data synchronously.
 
-* 2) inform to the appliations the status of the synchonization, 
-	 as well the synchonization parameters used posteriously to 
-	 timestamp the data or
+* 2) inform to the applications the status of the synchronization,
+	 as well the synchronization parameters used posteriorly to
+	 time-stamp the data or
 */
 
 
