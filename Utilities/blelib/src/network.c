@@ -416,13 +416,13 @@ connection_t * connection;
 				}else if(network_get_wait_end_procedure()==1)
                                 {
                                   if(Timer_Expired(&network.time_alive)){
-                                    PRINTDEBUG("The device was not able to identify any perispheral:\n");
+                                    PRINTDEBUG("The device was not able to identify any peripheral:\n");
                                     
                                     if(network.num_device_found!=0){
-                                      PRINTDEBUG("the device will try to set up a connection with %d pherispherals\n",network.num_device_found);
+                                      PRINTDEBUG("the device will try to set up a connection with %d peripherals\n",network.num_device_found);
                                       network.device_cstatus=DEVICE_READY_TO_CONNECT;
                                     }else{
-                                      PRINTDEBUG("the device will restart the scanning of perispherals\n");
+                                      PRINTDEBUG("the device will restart the scanning of peripherals\n");
                                       Timer_Set(&network.time_alive, CLOCK_SECOND * 36);
                                       network_set_wait_end_procedure();
                                       return NET_SUCCESS;
@@ -479,7 +479,7 @@ connection_t * connection;
 				
 					if(ch_ret!=CHADLE_SUCCESS)
 					{
-						PRINTDEBUG(" An Error occur during the adverticement setup procedure please check the parameters\n");
+						PRINTDEBUG(" An Error occur during the advertisement setup procedure please check the parameters\n");
 						return NET_ERROR;
 					
 					}
@@ -536,15 +536,15 @@ connection_t * connection;
 				connection=NET_get_connection_by_status_CB(ST_CREATE_CONNECTION);
                                 if(connection==NULL)
                                 {
-                                  /*that means that the coonection state has been completed*/
+                                  /*that means that the connection state has been completed*/
                                   if(network.num_device_connected <= 0 && reconnection_tries > 0)
                                   {
-                                    PRINTDEBUG(" Was imposible to connect with any device \n");
+                                    PRINTDEBUG(" Was impossible to connect with any device \n");
                                     PRINTDEBUG(" Now the device will start the reconnection procedure \n");
                                     
                                   }else if(network.num_device_connected < network.num_device_found && reconnection_tries > 0)
                                   {
-                                    PRINTDEBUG(" Was imposible to connect with %d devices \n", (network.num_device_found - network.num_device_connected));
+                                    PRINTDEBUG(" Was impossible to connect with %d devices \n", (network.num_device_found - network.num_device_connected));
                                     PRINTDEBUG(" Now the device will start the reconnection procedure \n");
                                   }else if(network.num_device_connected == network.num_device_found)
                                   {
@@ -557,7 +557,7 @@ connection_t * connection;
                                    
                                     if(reconnection_tries<=0)
                                     {
-                                      /*check it that there is at least one perispheral connected*/
+                                      /*check it that there is at least one peripheral connected*/
                                       if(network.num_device_connected > 0)
                                       {
                                         network.device_cstatus = DEVICE_READY_TO_INTERCHANGE;
@@ -566,12 +566,12 @@ connection_t * connection;
                                           connection = NET_get_connection_by_status_CB(ST_TIME_OUT);
                                           if(connection!=NULL) connection->connection_status = ST_CONNECTION_LOST;   
                                         }while(connection!=NULL);
-                                        PRINTDEBUG(" Was imposible to connect with %d devices \n", (network.num_device_found - network.num_device_connected));
+                                        PRINTDEBUG(" Was impossible to connect with %d devices \n", (network.num_device_found - network.num_device_connected));
                                         PRINTDEBUG(" Now the device will start the service_discovery_procedure \n");
                                         network.flags.connection_stablishment_complete=1;
                                         return NET_SUCCESS;
                                       }
-                                      PRINTDEBUG(" Was imposible to connect with any device \n");
+                                      PRINTDEBUG(" Was impossible to connect with any device \n");
                                       return NET_ERROR;
                                     }
                                     

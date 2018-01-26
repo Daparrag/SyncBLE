@@ -1,5 +1,5 @@
-/*this file brings suport for the packet creation/parse for the ptp protocol*/
-/*Test file for ptp protocol*/
+/*this file brings support for the packet creation/parse for the PTP protocol*/
+/*Test file for PTP protocol*/
 
 #ifdef BLE_APP_CONFIG
 #include  <blefw_conf.h>
@@ -50,17 +50,17 @@ config_connection_t ConnSlave2 = {SCAN_P_S2,
 
 
 //slave 1
-//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE2}; /*device addrs*/
+//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE2}; /*device adds*/
 //const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','W','O'}; /*device name*/                            
 
 
 //slave 2
-//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE3}; /*device addrs*/
+//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE3}; /*device adds*/
 //const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','T','H','R','E','E'}; /*device name*/                            
 
 
 //slave 3
-//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE4}; /*device addrs*/
+//const uint8_t DEVICE_BDADDR[] =  { 0x55, 0x11, 0x07, 0x01, 0x16, 0xE4}; /*device adds*/
 //const char local_name[] = {AD_TYPE_COMPLETE_LOCAL_NAME,'B','L','E','-','F','O','U','R'}; /*device name*/                            
 app_profile_t PROFILE;
 
@@ -128,21 +128,21 @@ return ret;
 
 void test_ptp_server_application(void)
 {
-  /*  the ptp_server is who has the reference clock that will be used for synchonize 
-   *  the ptp_client devices; for this solution was considered only one ptp_server  
-   *  an has been designed as a device who begins the synchonization and who replay 
-   *  the commands sent by the ptp_clients through the write request. 
-   *  therefore the ptp_server has to scan for the service associated to the ptp_sync
-   *  if the ptp_client devices doesn't replay for the scanning means that the ptp_client do not
-   *  need to be synchonized therefore is discarded.
-   *
-   *  from the ptp_client side, it only has to wait for the sync command comming form the ptp_server
-   *  then request properly through the notfication and finally wait for the ptp_server replay
-   *  once all the iformaton needed for synchonize is collected the ptp_client ajust it local clock.  
-   *  
-   *  Once the clock in the ptp_client is ajusted; The device remain in this synchronous status for 
-   *  a defined amount of time where once this is expired the device restart the  synchronization.  
-   */
+	  /*  the ptp_server is who has the reference clock from where will be synchronized all
+	   *  the ptp_client devices. This solution was considered with only one ptp_server
+	   *  designed as the device who begins the synchronization and the one that replay through the 'write-request'
+	   *  the commands sent by the ptp_clients.
+	   *  Therefore the ptp_server has to scan for the service associated to the ptp_sync
+	   *  if the ptp_client devices doesn't replay from the scanning, it means that the ptp_client do not
+	   *  need to be synchronized therefore is discarded.
+	   *
+	   *  from the ptp_client side, it only has to wait for the sync command coming form the ptp_server
+	   *  then make a request using the BLE-notification mechanism and finally wait for the ptp_server replay
+	   *  once the information needed for synchronize is collected the ptp_client adjust it local clock.
+	   *
+	   *  Once the clock in the ptp_client is adjusted; The device remain in this synchronous status for
+	   *  a defined amount of time once it's expired the device restart the  synchronization process.
+	   */
   
      static NET_Status ret_net;
       APP_Status ret_app;

@@ -68,7 +68,7 @@ void update_clock(){
     initClock=1;
   }
   if(!stopClock){
-	current_clock++; /*time miliseconds tinks*/
+	current_clock++; /*time milliseconds ticks*/
 	if(--second_countdown == 0){
 		current_seconds+=1;
 		 second_countdown = CLOCK_SECOND;

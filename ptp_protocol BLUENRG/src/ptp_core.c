@@ -129,7 +129,7 @@ static void clean_buffer(uint8_t * buff, uint8_t length)
 
 
 /**
-* @brief  ptp_enable_notify: send a ptp packet .
+* @brief  ptp_enable_notify: send a PTP packet .
   * @param uint16_t connHandler: the connection handler associated.
   * @param uint8_t pkt_type: Packet Type.
   * param tClockTime * time_cpy> clock to send
@@ -220,7 +220,7 @@ return 1;
 
 
 /**
-* @brief  ptp_disable_notify: desable the notify in the ptp_client.
+* @brief  ptp_disable_notify: disable the notify in the ptp_client.
   * @param uint16_t connHandler: the connection handler associated.
   * @retval 1 if success
   */
@@ -269,8 +269,8 @@ ptp_status_table * get_status_table(uint16_t Chandler){
 
 
 /**
-  * @brief  This function is able to parce the input ptp_packet.
-  * @param uint8_t * data: packet itput.
+  * @brief  This function is able to parse the input ptp_packet.
+  * @param uint8_t * data: packet input.
   *	@param uint8_t data_len size of the packet.
   *	@param ptp_hdr * hdr : ptp_header structure 
   * @retval : payload pointer offset.
@@ -352,7 +352,7 @@ uint8_t get_control_field(uint8_t type)
     cfield+=1;
   }
   
-  if(cfield > 3) ptp_error_handler();/*somwthing is wrong*/
+  if(cfield > 3) ptp_error_handler();/*Something is wrong*/
   return cfield;
 }
 
@@ -398,11 +398,11 @@ static void ptp_update_clock(ptp_clock_st * tm){
 
 
 /**
-  * @brief  This function process the input syncronization Packages.
+  * @brief  This function process the input synchronization Packages.
   * @param uint16_t chandler: 	 Associate connection Handler.
   * @param uint16_t attrhandler: Input attribute handler.
   * @param uint8_t data_length:  Length of the packet
-  * @param tClockTime arval_time: Arraival time.
+  * @param tClockTime arval_time: Arrival time.
   */
 
 
@@ -502,7 +502,7 @@ BSP_ADD_LED_Off(ADD_LED2);
 
 /**
   * @brief  This function initialize the ptp_service.
-  * @ This function must be called at the begining of the application.
+  * @ This function must be called at the beginning of the application.
   * @param profile datastructure.
   * @
   */
@@ -544,10 +544,10 @@ static void init_ptp_profile(app_profile_t * profile){
 }
 
 /**
-  * @brief  This function initialize the ptp protocol.
+  * @brief  This function initialize the PTP protocol.
   * @param uint8_t ptp_dv_role: define if for this application the device 
   * will be (the master: who has the reference clock) or
-  * (the slave: who synchonize its clock to a master reference clock).
+  * (the slave: who synchronize its clock to a master reference clock).
   * @param  app_profile_t * profile: profile in where will be associated this application.
   * @
   */
@@ -601,7 +601,7 @@ BlueNRG_ConnInterval_Init(10);
   * @brief  This function handler the behavior of the ptp_server.
   * @param uint8_t ptp_dv_role: define if for this application the device 
   * will be (the master: who has the reference clock) or
-  * (the slave: who synchonize its clock to a master reference clock).
+  * (the slave: who synchronize its clock to a master reference clock).
   * @param  app_profile_t * profile: profile in where will be associated this application.
   * @
   */
@@ -618,7 +618,7 @@ void ptp_server_sync_process(){
                                 PTPStatus[max_number_entries].node_id = max_number_entries;
         			max_number_entries+=1;
   		}
-  		/*return since we can't synchronize before to connection stablishment*/
+  		/*return since we can't synchronize before to connection establishment*/
   		return;
 
 	}/*else if (network_get_status() && Cinterval_started==0){
@@ -626,7 +626,7 @@ void ptp_server_sync_process(){
         }*/
 
 	if (sync_success != TRUE){
-		/*the ptp_server device needs to resynchronize*/
+		/*the ptp_server device needs to resynchronized*/
 		event_t * event;
   		event = (event_t *)HCI_Get_Event_CB();
 
@@ -694,7 +694,7 @@ event = (event_t *)HCI_Get_Event_CB();
               PTPStatus[max_number_entries].Chandler = cc->handle;
               max_number_entries+=1;
       }
-      /*return since we can't synchronize before to connection stablishment*/
+      /*return since we can't synchronize before to connection establishment*/
       return;
 
   }
@@ -813,7 +813,7 @@ BSP_ADD_LED_Off(ADD_LED2);
   * @brief  This function forward the corresponding sync-follow msg to the slaves.
   * @param uint8_t ptp_status_table * st_sync_node : Control Structure For each_Node; 
   * will be (the master: who has the reference clock) or
-  * (the slave: who synchonize its clock to a master reference clock).
+  * (the slave: who synchronize its clock to a master reference clock).
   * @
   */
 

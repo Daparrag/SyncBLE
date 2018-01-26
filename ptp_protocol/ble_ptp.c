@@ -70,7 +70,7 @@ static void ptp_update_clock(ptp_clock_st * tm);
 
 /**
   * @brief  This function initialize the ptp_service.
-  * @ This function must be called at the begining of the application.
+  * @ This function must be called at the beginning of the application.
   * @param profile datastructure.
   * @
   */
@@ -121,7 +121,7 @@ void ptp_error_handler(void){
 
 
 /**
-  * @brief  This function return the specific ptp status per connection.
+  * @brief  This function return the specific PTP status per connection.
   * @param uint16_t connHandler: the connection handler associated to a connection status.
   * @
   */
@@ -165,8 +165,8 @@ static ptp_state_t * ptp_get_status(uint16_t connHandler){
 /*since the number of entries are very small up to 8 
  *it is not necessary to implement a complex hash table to associate
  *the connection handler to the status, however this implementation 
- *must to pay a constant O(n) for search throught the entries. 
- *it is recomended to implement a hash table to reduce this overhead 
+ *must to pay a constant O(n) for search thought the entries.
+ *it is recommended to implement a hash table to reduce this overhead
  *(in case in which it could be needed)*/
 uint8_t i;
 ptp_state_t * rptp_status = NULL;
@@ -185,10 +185,10 @@ return  rptp_status;
 }
 
 /**
-  * @brief  This function initialize the ptp protocol.
+  * @brief  This function initialize the PTP protocol.
   * @param uint8_t ptp_dv_role: define if for this application the device 
   * will be (the master: who has the reference clock) or
-  * (the slave: who synchonize its clock to a master reference clock).
+  * (the slave: who synchronize its clock to a master reference clock).
   * @param  app_profile_t * profile: profile in where will be associated this application.
   * @
   */
@@ -280,7 +280,7 @@ static uint8_t get_control_field(uint8_t type)
     cfield+=1;
   }
   
-  if(cfield > 3) ptp_error_handler();/*somwthing is wrong*/
+  if(cfield > 3) ptp_error_handler();/*Something is wrong*/
   return cfield;
 }
 

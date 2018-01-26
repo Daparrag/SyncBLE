@@ -82,7 +82,7 @@ HAL_StatusTypeDef ptp_interrupt_test_init(uint32_t TickPriority)
   /* Get clock configuration */
   HAL_RCC_GetClockConfig(&clkconfig, &pFLatency);
   
-  /* Get APB1 prescaler */
+  /* Get APB1 Pre-scaler */
   uwAPB1Prescaler = clkconfig.APB1CLKDivider;
   
   /* Compute TIM2 clock */
