@@ -338,7 +338,7 @@ void NET_Control_led_status_BLE(void){
   * @param  event_t * event: specific event
   * @retval NET_Status: Value indicating success or error code
   */
-NET_Status network_process_conn_oriented(event_t * event){/*we have to deal with the events maybe wr cant catch witout passing parameters*/
+NET_Status network_process_conn_oriented(event_t * event){/*we have to deal with the events; Maybe we can't catch without passing parameters*/
 
 CHADLE_Status ch_ret;
 SERV_Status   serv_ret;
