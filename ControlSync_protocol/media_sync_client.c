@@ -6,7 +6,7 @@
 
 /* Operation modes:
 *
-* a) using the PTP protocol for clock synchronization and time-stamp solution
+* a) using the PTP protocol for clock synchronization and timestamp solution
 * b) static control mechanism based on the connection interval and
 *    connection length configuration.
 *
@@ -15,7 +15,7 @@
 
 /*Task:
 * 1) start the synchronization control process it could evolve  the
-	 PTP synchronization API or report to the slaves the static synchronization paramenters .
+	 PTP synchronization app or report to the slaves the static synchronization parameters .
 
 * 2) inform to the applications the status of the synchronization,
 	 as well the synchronization parameters used posteriorly to
@@ -107,44 +107,17 @@ static uint8_t  parse_ctrl_init_packet(uint8_t * data,
 static uint8_t  parse_ctrl_report_src_packet(uint8_t * data, 
 											 uint8_t data_len,
 											 ctrl_report_src_packet * report_pack);
-static uint8_t ctrl_sync_enable_notify(uint16_t chandler);
-
-static uint8_t ctrl_sync_enable_notify(uint16_t chandler);
-
-static uint8_t ctrl_disable_notify(uint16_t chandler);
 
 
-/**
-  * @brief  This function enable the notification to the remote control node.
-  *	@param uint8_t uint16_t chandler : Connection Handler Needed To enable the notification.
-  * @retval : true is success or false if fail.
-  */
-static uint8_t ctrl_sync_enable_notify(uint16_t chandler){
-  uint8_t notify_enable_data [] = {0x01,0x00};
-  struct timer t;
-  Timer_Set(&t, CLOCK_SECOND*10);
-  
-  while(aci_gatt_write_charac_descriptor(chandler,ctrl_sync_tx_att.Associate_CharHandler+2,2,notify_enable_data)==BLE_STATUS_NOT_ALLOWED){
-    if(Timer_Expired(&t))return 0;/*error*/
-  }
-  return 1;
-}
 
-/**
-  * @brief  This function disable the notification to the remote control node.
-  *	@param uint8_t uint16_t chandler : Connection Handler Needed To enable the notification.
-  * @retval : true is success or false if fail.
-  */
-static uint8_t ctrl_disable_notify(uint16_t chandler){
-  uint8_t notify_disable_data [] = {0x00,0x00};
-  struct timer t;
-  Timer_Set(&t, CLOCK_SECOND*10);
-  while(aci_gatt_write_charac_descriptor(chandler,ctrl_sync_tx_att.Associate_CharHandler+2,2,notify_disable_data)==BLE_STATUS_NOT_ALLOWED)
-  {
-    if(Timer_Expired(&t))return 0;/*error*/
-  }
-return 1;
-}
+
+
+
+
+
+
+
+
 
 /**
   * @brief  This function return the tx_delay by the id of the node.
@@ -338,7 +311,7 @@ static void process_init_packet(ctrl_init_packet * init_pack)
 {
 
 
-	CTRL_status = STARTING; /*in theory this has to be associate to each source */
+	CTRL_status = STARTING; /*in theory this has to be assocoate to each source */
 	uint8_t source_idx  = init_pack->header.source_id;
 	uint8_t node_id     = init_pack->header.receiver_id;
 	uint8_t squence_id  = init_pack->header.seq_id;
@@ -430,6 +403,9 @@ void ctrl_input_packet_process(uint16_t chandler,
 			process_report_packet(&report_pack);
 		}
 
+
+
+
 	}
 
 }
@@ -467,6 +443,8 @@ static void send_ctrl_sync_packet(uint8_t creceiver_id, uint8_t pkt_type)
 
 }
 
+
+
 /**
   * @brief  This function parse and input control-sync init or report packet header.
   * @param  uint8_t * data : buffer input data.
@@ -494,6 +472,7 @@ static uint8_t  parse_ctrl_sync_packet_header(uint8_t * data, uint8_t data_len, 
 	return 4; 
 
 }
+
 
 /**
   * @brief  This function parse and input control-sync init packet header.
@@ -547,7 +526,7 @@ static uint8_t  parse_ctrl_report_src_packet(uint8_t * data, uint8_t data_len,ct
 
 
 /**
-  * @brief  This function initializes the control synchronization protocol.
+  * @brief  This function initializes the contol synchonization protocol.
   * @param  app_profile_t * profile : profile to associate the service. 
   * @retval : none.
   */
@@ -596,8 +575,8 @@ ctrl_sync_status Get_Ctrl_Sync_status(void)
 }
 
 /**
-  * @brief  This function force a specific status of the synchronization protocol.
-  * @param  ctrl_sync_status status: control synchronization status
+  * @brief  This function force a specific status of the synchonization protocol.
+  * @param  ctrl_sync_status status: control synchonization status
   * @retval : none
   */
 void Ctrl_Sync_set_status(ctrl_sync_status status)
@@ -615,10 +594,9 @@ void Ctrl_Sync_set_status(ctrl_sync_status status)
   * @param  uint8_t no_packets : optional number of packets to transmit.
   * @retval : none
   */
-void Ctrl_Sync_start(uint8_t no_tx_nodes, uint8_t no_packets)
+void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets)
 {
-	uint8_t i;
-        uint8_t ret;
+	uint8_t i;		
 	if(CTRL_status != UNSTARTED) return;
 	
 #if CTRL_MODE
@@ -626,19 +604,24 @@ void Ctrl_Sync_start(uint8_t no_tx_nodes, uint8_t no_packets)
 
 #else
 /*not_ptp then uses the static config*/	
-	for(i=0; i < no_tx_nodes; i++)
+total_receivers = no_receivers;
+	for(i=0; i < no_receivers; i++)
 	{	
-            uint16_t temp_chandler = NET_get_connection_handler(i);
-            ret = ctrl_sync_enable_notify(temp_chandler);
-            
-            if(ret){ 
-              CTRL_GBAL_STR[i].notify_enable=1;
-              CTRL_status = STARTING;
-            
-            }
+		CTRL_GBAL_STR[i].source_id = ctrl_get_source_id();
+		CTRL_GBAL_STR[i].receiver_id = i+1;
+		CTRL_GBAL_STR[i].seq_id = 0;
+		CTRL_GBAL_STR[i].total_receivers=no_receivers;
+		CTRL_GBAL_STR[i].total_packets = no_packets;
+		CTRL_GBAL_STR[i].tx_delay = TX_INTERVAL;
+		CTRL_GBAL_STR[i].slave_max_delay_diff = EXPECTED_DELAY * (1-i);
 	}
 
+		ctrl_peding_packet = 1;
+		CTRL_status = STARTING;
+
+
 #endif
+
 	
 }
 
@@ -772,23 +755,23 @@ void Ctrl_Sync_client_process(){
 event_t * event;
 event = (event_t *)HCI_Get_Event_CB();
 
-if(event!=NULL && event->event_type== EVT_BLUE_GATT_NOTIFICATION){
-  			/*get the events associated to ptp protocol*/
+if(event!=NULL && event->event_type == EVT_BLUE_GATT_ATTRIBUTE_MODIFIED){
 
-  			evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
-           			ctrl_input_packet_process  (evt->conn_handle,
-           									 evt->attr_handle,
-           									 evt->event_data_length,
-           									 evt->attr_value,
-           									 event->ISR_timestamp
-           									 );
-}else if(event==NULL && CTRL_status == UNSTARTED) {
-    uint8_t n_source;
-    
-    n_source= ctrl_get_total_receives();
-    Ctrl_Sync_start(n_source,0);
-    
-}
+		uint8_t hw_version = get_harware_version();
+        if(hw_version==IDB05A1){
+	         
+	          evt_gatt_attr_modified_IDB05A1 *evt = (evt_gatt_attr_modified_IDB05A1*)event->evt_data;
+	          ctrl_input_packet_process(
+	          	evt->conn_handle,
+                evt->attr_handle,
+                evt->data_length,
+                evt->att_data,
+                event->ISR_timestamp
+	          	);
+	      }
+
+	}
+
 
 
 }
