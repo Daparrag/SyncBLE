@@ -6,7 +6,7 @@
 
 /* Operation modes:
 *
-* a) using the PTP protocol for clock synchronization and timestamp solution
+* a) using the PTP protocol for clock synchronization and time-stamp solution
 * b) static control mechanism based on the connection interval and
 *    connection length configuration.
 *
@@ -67,11 +67,11 @@ static uint16_t ctrl_get_delay_by_id(uint8_t creceiver_id);
 
 static uint16_t  ctrl_get_max_delay(uint8_t ctrl_table_idx);
 
-static uint8_t ctrl_get_source_id(void);
+static uint16_t ctrl_get_source_id(void);
 
 static uint16_t  ctrl_get_max_delay(uint8_t ctrl_table_idx);
 
-static uint8_t ctrl_get_source_id(void);
+static uint16_t ctrl_get_source_id(uint8_t idx);
 
 static uint8_t ctrl_get_total_receives(void);
 
@@ -185,8 +185,11 @@ static uint8_t ctrl_get_packets_to_tx(uint8_t client_idx)
   * @retval : the control id of the node.
   */
 
-static uint8_t ctrl_get_source_id(void)
+static uint16_t ctrl_get_source_id(uint8_t idx)
 {
+	/*for simplicity We associate the source Id to a remote connection handler*/
+	uint16_t source_id;
+	source_id = NET_get_chandler_by_index(idx);
 
 	return source_id;
 }
@@ -360,6 +363,36 @@ static void process_report_packet(ctrl_report_src_packet * report_pack)
 }
 
 
+
+
+/**
+  * @brief  This function inform to the mediasync_server that  the client is ready to
+  * 		receive synchronization packets
+  * @param uint16_t chandler : connection handler associated to a mediasync_server;
+  * @retval : 1 if the operation is successful completed otherwise 0.
+  */
+
+static uint8_t Ctrl_enable_notify(uint8_t _index){
+
+	uint16_t t_chandler;
+
+	 t_chandler = ctrl_get_source_id (_index);
+
+	uint8_t notify_enable_data [] = {0x01,0x00};
+
+	struct timer t;
+	 Timer_Set(&t, CLOCK_SECOND*10);
+
+	  while(aci_gatt_write_charac_descriptor(t_chandler,ctrl_sync_tx_att.Associate_CharHandler+2,2,notify_enable_data)==BLE_STATUS_NOT_ALLOWED)
+	  {
+	    if(Timer_Expired(&t))return 0;/*error*/
+	  }
+	return 1;
+
+}
+
+
+
 /**
   * @brief  This function process the input packets arriving form the BLE interface.
   * @param uint16_t chandler : connection handler associated ;
@@ -367,6 +400,7 @@ static void process_report_packet(ctrl_report_src_packet * report_pack)
   *	@param uint8_t * buff : packet buffer
   * @retval : none.
   */
+
 
 void ctrl_input_packet_process(uint16_t chandler, 
                             uint16_t attrhandler, 
@@ -596,7 +630,8 @@ void Ctrl_Sync_set_status(ctrl_sync_status status)
   */
 void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets)
 {
-	uint8_t i;		
+	uint8_t i = 0;
+	uint8_t ret;
 	if(CTRL_status != UNSTARTED) return;
 	
 #if CTRL_MODE
@@ -605,20 +640,15 @@ void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets)
 #else
 /*not_ptp then uses the static config*/	
 total_receivers = no_receivers;
-	for(i=0; i < no_receivers; i++)
-	{	
-		CTRL_GBAL_STR[i].source_id = ctrl_get_source_id();
-		CTRL_GBAL_STR[i].receiver_id = i+1;
-		CTRL_GBAL_STR[i].seq_id = 0;
-		CTRL_GBAL_STR[i].total_receivers=no_receivers;
-		CTRL_GBAL_STR[i].total_packets = no_packets;
-		CTRL_GBAL_STR[i].tx_delay = TX_INTERVAL;
-		CTRL_GBAL_STR[i].slave_max_delay_diff = EXPECTED_DELAY * (1-i);
-	}
 
-		ctrl_peding_packet = 1;
+
+			do{
+				CTRL_GBAL_STR[i].notify_enable =  Ctrl_enable_notify(uint8_t _index);
+				if(!CTRL_GBAL_STR[i].notify_enable)while(1);
+				i+=1;
+			}while (i < no_receivers)
+
 		CTRL_status = STARTING;
-
 
 #endif
 
@@ -770,6 +800,12 @@ if(event!=NULL && event->event_type == EVT_BLUE_GATT_ATTRIBUTE_MODIFIED){
 	          	);
 	      }
 
+	}else
+	{
+		int i;
+		for (i=0; i < EXPECTED_NODES; i++)
+			if(!CTRL_SYNC_STR[i].notify_enable)
+				CTRL_SYNC_STR[i].notify_enable=ptp_enable_notify(CTRL_SYNC_STR[i].Chandler);
 	}
 
 

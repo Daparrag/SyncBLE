@@ -1155,3 +1155,18 @@ uint8_t NET_get_num_connections(void)
 	return n_connections;
 
 }
+
+
+uint16_t NET_get_chandler_by_index(uint8_t _index){
+	uint16_t r_chandler;
+
+	if(_index > EXPECTED_NODES ) return 0;
+#ifdef MULTINODE
+		r_chandler = network.mMSConnection[_index].Connection_Handle;
+#else
+		r_chandler = network.mMSConnection.Connection_Handle;
+#endif
+		return r_chandler;
+}
+
+

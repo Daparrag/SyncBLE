@@ -44,10 +44,12 @@ static const uint8_t sync_control_service_uuid[16] = { 0x66, 0x9a, 0x0c,
 		0x20, 0x00, 0x08, 0x96, 0x9e, 0xe2, 0x11, 0x9f, 0xb1, 0xf0, 0xf2, 0x73,
 		0xd9 };
 
-
 static const uint8_t  sync_control_TXchar_uuid[16] = { 0x66,0x9a,0x0c,
 		0x20,0x00,0x08,0x96,0x9e,0xe2,0x11,0x9f,0xb1,0xe1,0xf2,0x73,
 		0xd9};
+
+
+
 
 static ctrl_status_table CTRL_SYNC_STR[EXPECTED_NODES];
 static ctrl_sync_status  CTRL_status = UNSTARTED;
@@ -360,6 +362,23 @@ static void process_report_packet(ctrl_report_src_packet * report_pack)
 }
 
 
+
+
+static uint8_t ptp_enable_notify(uint16_t chandler){
+
+	uint8_t notify_enable_data [] = {0x01,0x00};
+
+	struct timer t;
+	 Timer_Set(&t, CLOCK_SECOND*10);
+
+	  while(aci_gatt_write_charac_descriptor(chandler,ctrl_sync_tx_att.Associate_CharHandler+2,2,notify_enable_data)==BLE_STATUS_NOT_ALLOWED)
+	  {
+	    if(Timer_Expired(&t))return 0;/*error*/
+	  }
+	return 1;
+
+}
+
 /**
   * @brief  This function process the input packets arriving form the BLE interface.
   * @param uint16_t chandler : connection handler associated ;
@@ -379,6 +398,7 @@ void ctrl_input_packet_process(uint16_t chandler,
 	ctrl_sync_hdr ctrl_hdr;
 	ctrl_init_packet init_pack;
 	ctrl_report_src_packet report_pack;
+	st = get_status_table(chandler);
         
         
 
@@ -731,22 +751,33 @@ void Ctrl_Sync_parameters(void)
 
 }
 
+
+
 void Ctrl_Sync_server_process(void)
 {
       event_t * event;
       event = (event_t *)HCI_Get_Event_CB();
 
-  		if(event!=NULL && event->event_type== EVT_BLUE_GATT_NOTIFICATION){
-  			/*get the events associated to ptp protocol*/
+  		if(event!=NULL){
+  			/*get the events associated to CTL_protocol*/
+  			switch (event->event_type){
+  				case EVT_BLUE_GATT_NOTIFICATION :
+  				{
+  					evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
+  					 ctrl_input_packet_process  (evt->conn_handle,
+  					    					     evt->attr_handle,
+  					                             evt->event_data_length,
+  					                             evt->attr_value,
+  					           					 event->ISR_timestamp
+  					                             );
+  				}
+  				break;
+  			}
 
-  			evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
-           		ctrl_input_packet_process  (evt->conn_handle,
-           					       evt->attr_handle,
-                                                       evt->event_data_length,
-                                                       evt->attr_value,
-           					       event->ISR_timestamp
-                                                      );
-                }  
+
+
+
+  		}
 }
 
 

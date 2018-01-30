@@ -96,7 +96,7 @@ typedef struct
 #if	(ROLE == GAP_PERIPHERAL_ROLE)
 	ctrl_sync_status  local_sync_status; //used to support multiple source streams (not yet implemented)
 #endif	
-	uint8_t  source_id;
+	uint16_t  source_id;
 	uint8_t  receiver_id;
 	uint8_t  seq_id;
 	uint8_t total_receivers;
