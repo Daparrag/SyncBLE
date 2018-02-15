@@ -1,7 +1,7 @@
 /*sync_control_interface*/
 /*
 * this interface is used to inform and provide synchronization parameters for BLE applications
-* this could take advantage of the ptp_ synchronization mechanism development in a previous relase
+* this could take advantage of the ptp_ synchronization mechanism development in a previous release
 */
 
 /* Operation modes:
@@ -67,7 +67,6 @@ static uint16_t ctrl_get_delay_by_id(uint8_t creceiver_id);
 
 static uint16_t  ctrl_get_max_delay(uint8_t ctrl_table_idx);
 
-static uint16_t ctrl_get_source_id(void);
 
 static uint16_t  ctrl_get_max_delay(uint8_t ctrl_table_idx);
 
@@ -643,7 +642,7 @@ total_receivers = no_receivers;
 
 
 			do{
-				CTRL_GBAL_STR[i].notify_enable =  Ctrl_enable_notify(uint8_t _index);
+				CTRL_GBAL_STR[i].notify_enable =  Ctrl_enable_notify(i);
 				if(!CTRL_GBAL_STR[i].notify_enable)while(1);
 				i+=1;
 			}while (i < no_receivers)
@@ -805,7 +804,7 @@ if(event!=NULL && event->event_type == EVT_BLUE_GATT_ATTRIBUTE_MODIFIED){
 		int i;
 		for (i=0; i < EXPECTED_NODES; i++)
 			if(!CTRL_SYNC_STR[i].notify_enable)
-				CTRL_SYNC_STR[i].notify_enable=ptp_enable_notify(CTRL_SYNC_STR[i].Chandler);
+				CTRL_SYNC_STR[i].notify_enable=Ctrl_enable_notify(CTRL_SYNC_STR[i].Chandler);
 	}
 
 

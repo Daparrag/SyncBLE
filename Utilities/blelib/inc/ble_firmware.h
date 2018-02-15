@@ -16,7 +16,7 @@
 #include "hci_le.h"
 #include "hal.h"
 #include "sm.h"
-#include "uart_support.h"
+//#include "uart_support.h"
 #include "stm32_bluenrg_ble.h"
 #include "ble_clock.h"
 #include "ble_status.h"
