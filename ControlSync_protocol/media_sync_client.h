@@ -137,7 +137,7 @@ typedef struct
 	uint8_t total_peers;			      /*number of peer that share the same type either source or sink*/
 	ctrl_sync_param sync_param;
 	uint8_t notify_enable;
-}ctrl_status_table;
+}ctrl_status_entry;
 
 
 /**********CTRL Message Definition***********************/
@@ -148,6 +148,8 @@ typedef struct
 #define REPORT_RRC 		0x04
 /*static control protocol parameters*/
 #define SOURCE_ID 		0x00
+
+
 
 
 /**********SYNC_CONTROL_PACKET_DEF******/
@@ -166,7 +168,7 @@ ctrl_sync_hdr header; 				/*4bytes*/
 ctrl_sync_param  init_sync_parter;  /*6bytes*/
 }ctrl_init_packet; /*10bytes*/
 
-
+#define INIT_PCK_SIZE		0x0A	/*USED TO DEFINE THE SIZE OF THE INIT PACKET IN BYTES*/
 
 /**
   * @brief  This function initializes the control synchronization protocol.
