@@ -104,6 +104,12 @@ static void process_init_packet(ctrl_init_packet * init_pack);
 static ctrl_status_entry * ctrl_set_new_status_entry(chandler);
 static uint8_t validate_connection_id(chandler);
 static ctrl_status_entry * ctrl_get_new_entry(void);
+static uint16_t ctrl_get_source_id (index);
+static void send_ctrl_sync_packet(uint8_t entry_idx, uint8_t pkt_type);
+static uint8_t create_ctrl_init_packet( uint8_t connect_id,ctrl_init_packet * init_pkt_str, uint8_t *buff );
+static uint8_t create_ctrl_packet_hdr( uint8_t ctrl_entry_idx ,uint8_t cpkt_type, ctrl_sync_hdr * hdr, uint8_t *buff)
+static uint8_t CTRL_enable_notify(uint16_t chandler);
+static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_init_packet * init_pack);
 /*************************************************************/
 
 /**
@@ -239,9 +245,252 @@ return (temp_sync_param);
   * @param  uint8_t no_packets : optional number of packets to transmit.
   * @retval : none
   */
-void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets)
+void Ctrl_Sync_start(uint8_t no_peers, uint8_t no_packets)
 {
+      /*initialy is  considered only an static configuration based in connection interval configuration*/
+uint8_t i;
+num_peer_device = no_peers;
 
+#if (ROLE == GAP_CENTRAL_ROLE)
+
+      for(i=0; i < num_peer_device; i++)
+      {
+            CTRL_SYNC_STR[i].local_sync_status = UNSTARTED;
+            CTRL_SYNC_STR[i].connect_id = ctrl_get_source_id(i);
+            CTRL_SYNC_STR[i].seq_id = 0;
+            CTRL_SYNC_STR[i].total_peers = no_peers;
+            CTRL_SYNC_STR[i].ctrl_sync_param.packet_count = 0;
+            /*(optionally)the following values could be acquiered using the ptp protocol or another*/
+            /*the following values has been setting up statically based on the connection interval configuration*/
+            CTRL_SYNC_STR[i].ctrl_sync_param.tx_delay = TX_INTERVAL;
+            CTRL_SYNC_STR[i].ctrl_sync_param.slave_max_delay_diff =EXPECTED_DELAY * (1-i);
+            CTRL_SYNC_STR[i].pending_pack_type = INITIATOR;
+            CTRL_SYNC_STR[i].pending_pack = TRUE;
+      }
+#elif (ROLE == GAP_PHERIPERAL_ROLE)
+      /*enable notify*/
+
+      for (i=0; i<num_peer_device; i++ ){
+
+            uint16_t source_id = ctrl_get_source_id(i);
+            CTRL_enable_notify(source_id);
+      }
+
+#endif
+
+}
+
+/**
+  * @brief  This function is to transmit synchronously ctrl packets using the connection interval
+                  interrupt.
+  * @param  : none
+  * @retval : none
+  */
+
+void Ctrl_Sync_send_pending_packets(void){
+      uint8_t i;
+
+      for (i = 0; i< num_peer_device; i++)
+      {
+            if (CTRL_SYNC_STR[i].pending_pack == TRUE){
+                  switch (CTRL_SYNC_STR[i].pending_pack_type)
+                  {
+                     case INITIATOR:
+                     {
+                        send_ctrl_sync_packet(i,INITIATOR);
+                        CTRL_SYNC_STR[i].pending_pack = FALSE;
+                     }
+                     break;
+                     case REPORT_SRC:
+                     {
+
+                     }
+                     break;
+                     case REPORT_RRC:
+                     {
+
+                     }
+                     break;
+                  }
+
+
+            }
+      }
+}
+
+
+
+/**
+  * @brief  This function parse and input control-sync init or report packet header.
+  * @param  uint8_t * data : buffer input data.
+  *   @param  uint8_t data_len : total length of the input data.
+  *   @param  ctrl_sync_hdr * hdr : header data_structure.
+  * @retval : payload pointer offset.
+  */
+
+static uint8_t  parse_ctrl_sync_packet_header(uint8_t * data, uint8_t data_len, ctrl_sync_hdr * hdr)
+{
+      uint8_t * p;
+            if(data_len < CTRL_HDR_PCK_SIZE)return 0;
+
+      p=data;
+
+      hdr->pkt_type = *p++;
+      hdr->connect_id = ((*p << 8) | *(p+1));
+      p+=1;
+      hdr->total_peers = *p++;
+      hdr->seq_id = *p++;
+
+      return (p-data);
+}
+
+
+/**
+  * @brief  This function parse and input control-sync ipayload.
+  * @param  uint8_t * data : buffer input data.
+  *   @param  uint8_t data_len : total length of the input data.
+  *   @param  ctrl_init_packet * ctrl_pack : init_data_structure.
+  * @retval : payload pointer offset.
+  */
+
+static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_init_packet * init_pack)
+{
+      uint16_t * p = (uint16_t *)data;
+
+      ctrl_init_packet->init_sync_parter.packet_count = *p++;
+      ctrl_init_packet->init_sync_parter.tx_delay = *p++;
+      ctrl_init_packet->init_sync_parter.slave_max_delay_diff = *p++;
+
+      return ((uint8_t)p-data);
+
+}
+
+
+/**
+  * @brief  This function allows to sink devices enable the notify.
+  * @param uint8_t chandler: peer connection handler;
+  * @retval : (1) if the process is successed otherwise (0).
+  */
+
+static uint8_t CTRL_enable_notify(uint16_t chandler){
+
+      uint8_t notify_enable_data [] = {0x01,0x00};
+
+      struct timer t;
+       Timer_Set(&t, CLOCK_SECOND*10);
+
+        while(aci_gatt_write_charac_descriptor(chandler,ctrl_sync_tx_att.Associate_CharHandler+2,2,notify_enable_data)==BLE_STATUS_NOT_ALLOWED)
+        {
+          if(Timer_Expired(&t))return 0;/*error*/
+        }
+      return 1;
+
+}
+
+/**
+  * @brief  This function send a control sync init or report packet.
+  * @param uint8_t entry_idx: destination ID;
+  *   @param  uint8_t pkt_type : packet type
+  * @retval : void.
+  */
+
+static void send_ctrl_sync_packet(uint8_t entry_idx, uint8_t pkt_type){
+
+      tBleStatus res_ble;
+      uint8_t ret;
+      uint8_t tx_buffer[CTRL_INIT_PCK_SIZE];
+      ctrl_init_packet init_pck;
+      //ctrl_report_src_packet src_report_pck;
+
+      if(pkt_type == INITIATOR){
+            ret = create_ctrl_init_packet(entry_idx,&init_pck,tx_buffer);
+
+      }else if(pkt_type == REPORT_SRC){
+            //
+      }
+
+      if(ret==0)Ctrl_Sync_error_handler();
+      res_ble = aci_gatt_update_char_value(ctrl_sync_service.ServiceHandle,ctrl_sync_tx_att.CharHandle,0,ret,tx_buffer);
+      if(res_ble!= BLE_STATUS_SUCCESS)Ctrl_Sync_error_handler();
+
+}
+
+/**
+  * @brief  This function creates a control sync init packet.
+  * @param uint8_t ctrl_entry_idx;
+  *   @param uint8_t cpackets: num_packets to transmit default use 0.
+  *   @param ctrl_init_packet * init_pkt_str : control init datastructure
+  *   @param uint8_t * buff : packet buffer
+  * @retval : payload pointer.
+  */
+
+  static uint8_t create_ctrl_init_packet( uint8_t idx,ctrl_init_packet * init_pkt_str, uint8_t *buff )
+  {
+      uint8_t ret;
+      uint8_t * p = buff;
+
+      ret = create_ctrl_packet_hdr (idx,INITIATOR,&(init_pkt_str->header),buff);
+
+      init_pkt_str->init_sync_parter.packet_count=CTRL_SYNC_STR[idx].sync_param.packet_count;
+      init_pkt_str->init_sync_parter.tx_delay=CTRL_SYNC_STR[idx].sync_param.tx_delay;
+      init_pkt_str->init_sync_parter.slave_max_delay_diff=CTRL_SYNC_STR[idx].sync_param.slave_max_delay_diff;
+      p += ret;
+
+      *p++ =  ((init_pkt_str->init_sync_parter.packet_count & 0x00FF)>>8);
+      *p++ =  (init_pkt_str->init_sync_parter.packet_count & 0xFF);
+
+      *p++ =  ((init_pkt_str->init_sync_parter.tx_delay & 0x00FF)>>8);
+      *p++ =  (init_pkt_str->init_sync_parter.tx_delay & 0xFF);
+
+      *p++ =  ((init_pkt_str->init_sync_parter.slave_max_delay_diff & 0x00FF)>>8);
+      *p++ =  (init_pkt_str->init_sync_parter.slave_max_delay_diff & 0xFF);
+
+      return (p - buff);
+
+
+
+  }
+
+
+  /**
+  * @brief  This function creates a control sync header.
+  * @param uint8_t ctrl_entry_idx;
+  *   @param uint8_t cpkt_type: packet type.
+  *   @param ctrl_sync_hdr * hdr : ptp_header data-structure
+  *   @param uint8_t * buff : packet buffer
+  * @retval : payload pointer.
+  */
+
+static uint8_t create_ctrl_packet_hdr( uint8_t ctrl_entry_idx ,uint8_t cpkt_type, ctrl_sync_hdr * hdr, uint8_t *buff)
+{
+      uint8_t * p = buff;
+
+      hdr->pkt_type = cpkt_type;
+      hdr->connect_id = CTRL_SYNC_STR[ctrl_entry_idx].connect_id;
+      hdr->total_peers = CTRL_SYNC_STR[ctrl_entry_idx].total_peers;
+      hdr->seq_id = CTRL_SYNC_STR[ctrl_entry_idx].seq_id;
+
+      *p++=(hdr->pkt_type);
+      *p++=((hdr->connect_id & 0xFF00) >> 8);
+      *p++=((hdr->connect_id & 0xFF));
+      *p++=hdr->total_peers;
+      *p++=hdr->seq_id;
+
+      return (p-buff)
+}
+
+/**
+  * @brief  This function call the network.c primitives to retrieve a conneciton handler
+  * @param  uint8_t index : indicates the low level entry for the network.c primitives.
+  * @retval : connection handler.
+  */
+static uint16_t ctrl_get_source_id (uint8_t i)
+{
+      uint16_t tmp_chandler;
+
+      tmp_chandler = NET_get_chandler_by_index (i);
+
+      return tmp_chandler;
 
 }
 
@@ -378,7 +627,7 @@ static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len,ctrl_ini
       init_pack->tx_delay                 = p[1];
       init_pack->slave_max_delay_diff     = p[2];
 
-      return 6;
+      return CTRL_SYNC_PARM_SIZE;
 
 }
 
