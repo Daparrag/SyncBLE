@@ -1169,4 +1169,28 @@ uint16_t NET_get_chandler_by_index(uint8_t _index){
 		return r_chandler;
 }
 
+/**
+  * @brief  this function validate if the connection handler correspond to some connection established
+  * @param  uint16_t _chandler connection handler to validate.
+  * @retval return (true) if the connection handdler is valid otherwise (false)
+  */
+uint8_t NET_valiadate_chandler (uint16_t _chandler){
+	uint8_t i;
+	uint8_t n_connections;
+
+	n_connections = network.num_device_connected;
+	uint8_t ret = FALSE;
+
+#ifdef MULTINODE
+	for (i=0; i<n_connections; i++ ){
+		 if (network.mMSConnection[i].Connection_Handle == _chandler)
+			 return (ret=TRUE);
+	}
+
+#else
+	if (network.mMSConnection.Connection_Handle == _chandler )
+		ret = TRUE;
+return ret;
+#endif
+}
 
