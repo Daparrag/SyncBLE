@@ -1,4 +1,4 @@
-/*Network inteface implementation:
+/*Network interface implementation:
 * This is the interface between the low level primitives and the application interface,
 * as well it allows the user set up configuration.
 */
