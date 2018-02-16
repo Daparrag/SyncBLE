@@ -319,6 +319,23 @@ void Ctrl_Sync_send_pending_packets(void){
 }
 
 
+/**
+  * @brief  This function is used as the server main control process
+                  interrupt.
+  * @param  : none
+  * @retval : none
+  */
+
+void Ctrl_Sync_server_main(void)
+{
+      /*this process simply wait for an input packet to process or if a command arrive from the application*/
+  uint8_t i;
+  event_t * event;
+  event = (event_t *)HCI_Get_Event_CB();
+
+
+}
+
 
 /**
   * @brief  This function parse and input control-sync init or report packet header.

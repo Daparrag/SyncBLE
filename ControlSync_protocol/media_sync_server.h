@@ -238,5 +238,26 @@ void Ctrl_Sync_start(uint8_t no_packets);
 
 void Ctrl_Sync_send_pending_packets(void);
 
+/**
+  * @brief  This function is used as the server main control process
+  			interrupt.
+  * @param  : none
+  * @retval : none
+  */
+
+void Ctrl_Sync_server_main(void);
+
+
+/**
+  * @brief  This function is used as the client main control process
+  			interrupt.
+  * @param  : none
+  * @retval : none
+  */
+
+void Ctrl_Sync_client_main(void);
+
+
+
 
 #endif /* _CTRL_SYNC_H_ */
