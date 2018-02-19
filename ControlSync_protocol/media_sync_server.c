@@ -333,11 +333,56 @@ void Ctrl_Sync_server_main(void)
   event_t * event;
   event = (event_t *)HCI_Get_Event_CB();
 
+            if(event!=NULL){
+                  /*get the events associated to CTL_protocol*/
 
+                  switch (event->event_type){
+                        case EVT_BLUE_GATT_NOTIFICATION :
+                        {
+                              evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
+                              Ctrl_input_packet_process(evt->conn_handle,
+                                                        evt->attr_handle,
+                                                        evt->event_data_length,
+                                                        evt->attr_value,
+                                                        event->ISR_timestamp);
 
+                        }
+                        break;
+
+                  }
+
+            }
 
 }
 
+/**
+  * @brief  This function is used as the client main control process
+                  interrupt.
+  * @param  : none
+  * @retval : none
+  */
+void Ctrl_Sync_client_main(void){
+      event_t * event;
+      event = (event_t *)HCI_Get_Event_CB();
+
+      if(event!=NULL && event->event_type == EVT_BLUE_GATT_ATTRIBUTE_MODIFIED){
+
+      uint8_t hw_version = get_harware_version();
+        if(hw_version==IDB05A1){
+
+                evt_gatt_attr_modified_IDB05A1 *evt = (evt_gatt_attr_modified_IDB05A1*)event->evt_data;
+                Ctrl_input_packet_process(
+                                          evt->conn_handle,
+                                          evt->attr_handle,
+                                          evt->data_length,
+                                          evt->att_data,
+                                          event->ISR_timestamp
+                                          );
+            }
+
+
+      }
+}
 
 /**
   * @brief  This function parse and input control-sync init or report packet header.

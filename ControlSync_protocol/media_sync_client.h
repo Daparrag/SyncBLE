@@ -123,6 +123,8 @@ typedef struct
 
 }ctrl_sync_param;
 
+#define CTRL_SYNC_PARM_SIZE		0x06 		/*control synchonization paramiters in bytes*/
+
 
 /**
   * @brief  This struct defines the ctrl_table used by the synchronization protocol.
@@ -137,6 +139,8 @@ typedef struct
 	uint8_t total_peers;			      /*number of peer that share the same type either source or sink*/
 	ctrl_sync_param sync_param;
 	uint8_t notify_enable;
+	volatile uint8_t pending_pack;
+	volatile uint8_t pending_pack_type;
 }ctrl_status_entry;
 
 
@@ -161,6 +165,7 @@ uint16_t connect_id;			/*16bits*/
 uint8_t total_peers;        	/*8bits*/
 uint8_t  seq_id;
 }ctrl_sync_hdr; /*4bytes*/
+#define CTRL_HDR_PCK_SIZE		0x04	/*USED TO DEFINE THE SIZE OF THE CTRL PACKET HEADER IN BYTES*/
 
 
 typedef struct{
@@ -168,7 +173,7 @@ ctrl_sync_hdr header; 				/*4bytes*/
 ctrl_sync_param  init_sync_parter;  /*6bytes*/
 }ctrl_init_packet; /*10bytes*/
 
-#define INIT_PCK_SIZE		0x0A	/*USED TO DEFINE THE SIZE OF THE INIT PACKET IN BYTES*/
+#define CTRL_INIT_PCK_SIZE		0x0A	/*USED TO DEFINE THE SIZE OF THE INIT PACKET IN BYTES*/
 
 /**
   * @brief  This function initializes the control synchronization protocol.
@@ -200,7 +205,7 @@ void Ctrl_input_packet_process(uint16_t chandler,
   * @retval : control synchronization status.
   */
 
-ctrl_sync_status * Ctrl_Get_sync_status(uint16_t chandler);
+ctrl_sync_status  Ctrl_Get_sync_status(uint16_t chandler);
 
 
 /**
@@ -220,7 +225,7 @@ ctrl_sync_param * Ctrl_Get_remote_sync_param(uint16_t chandler);
   * @retval : none
   */
 
-void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets);
+void Ctrl_Sync_start(uint8_t no_packets);
 
 
 
@@ -232,6 +237,27 @@ void Ctrl_Sync_start(uint8_t no_receivers, uint8_t no_packets);
   */
 
 void Ctrl_Sync_send_pending_packets(void);
+
+/**
+  * @brief  This function is used as the server main control process
+  			interrupt.
+  * @param  : none
+  * @retval : none
+  */
+
+void Ctrl_Sync_server_main(void);
+
+
+/**
+  * @brief  This function is used as the client main control process
+  			interrupt.
+  * @param  : none
+  * @retval : none
+  */
+
+void Ctrl_Sync_client_main(void);
+
+
 
 
 #endif /* _CTRL_SYNC_H_ */
