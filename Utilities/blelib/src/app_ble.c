@@ -17,8 +17,8 @@ const char * ptr_local_name=NULL;
 /************************************************************/
 tBleStatus(*const  GAP_INIT_FUNC [BLE_ARCH_MASK+1])(uint8_t ,uint8_t ,uint8_t ,uint16_t* ,
                                                     uint16_t* ,uint16_t* ) = { /*architecture independent array, call the correct function according to the architecture version IDB05A1 or IDB04A1*/                                            
-MY_HAVE_IDB0xA1(0, aci_gap_init),                                            
-MY_HAVE_IDB0xA1(1, aci_gap_init)                                                    
+MAY_HAVE_IDB0xA1(0, aci_gap_init),                                            
+MAY_HAVE_IDB0xA1(1, aci_gap_init)                                                    
 }; /*init_gap_macro*/
 
 #define  aci_gap_init(_role,_privacity_enable,_device_name_char_length,_service_handler,\

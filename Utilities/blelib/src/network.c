@@ -1,4 +1,4 @@
-/*Network interface implementation:
+/*Network inteface implementation:
 * This is the interface between the low level primitives and the application interface,
 * as well it allows the user set up configuration.
 */
@@ -1169,28 +1169,42 @@ uint16_t NET_get_chandler_by_index(uint8_t _index){
 		return r_chandler;
 }
 
-/**
-  * @brief  this function validate if the connection handler correspond to some connection established
-  * @param  uint16_t _chandler connection handler to validate.
-  * @retval return (true) if the connection handdler is valid otherwise (false)
-  */
-uint8_t NET_valiadate_chandler (uint16_t _chandler){
-	uint8_t i;
-	uint8_t n_connections;
 
-	n_connections = network.num_device_connected;
-	uint8_t ret = FALSE;
+/**
+  * @brief  this fuction validates of the connection handler correspound to some 
+  * connection already stablished 
+  * @param  uint16_t chandler: connection handler used for search a conneciton 
+  * @retval (1) if the chandler correspound to some connection otherwise (0) 
+  */
+
+uint8_t NET_valiadate_chandler(uint16_t _chandler)
+{
+  uint8_t i;
+  uint8_t ret=FALSE;
+  uint8_t n_connections;
+  
+  n_connections = network.num_device_connected;
 
 #ifdef MULTINODE
-	for (i=0; i<n_connections; i++ ){
-		 if (network.mMSConnection[i].Connection_Handle == _chandler)
-			 return (ret=TRUE);
-	}
-
+  for(i=0; i<n_connections; i++)
+  {
+    if (network.mMSConnection[i].Connection_Handle == _chandler)
+        return (ret=TRUE);
+  }
 #else
-	if (network.mMSConnection.Connection_Handle == _chandler )
-		ret = TRUE;
-return ret;
-#endif
+  if (network.mMSConnection.Connection_Handle == _chandler)
+      ret = TRUE;
+#endif  
+ return ret; 
 }
 
+/**
+  * @brief  this fuction return  the GAP role of the device 
+  * connection already stablished 
+  * @param  none 
+  * @retval dv_type_t role of the device 
+  */
+dv_type_t NET_get_device_role(void)
+{
+  return  device_role;
+}

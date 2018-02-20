@@ -20,6 +20,11 @@
 #endif
 
 
+#define MAY_HAVE_IDB0xA1(arch, func_name) ((arch) == 1 ?func_name##_IDB05A1:func_name##_IDB04A1)/*concatenation of the funtion name and the architecture*/
+#define BLE_ARCH_MASK 1 /*used for reconize if we have a IDB04A1 or IDB05A1 architecture  BLE_ARCH_MASK is = #architectures -1 */
+
+
+
 /*address setup defaut parameters*/
 #define DEVICE_ADDRS_LENGTH 		        (6)		/*!< Modified according to the peer device address size (bytes)>*/
 #define CONFIG_DATA_PUBADDR_OFFSET	 (0x00) 	/**< Bluetooth public address or random*/

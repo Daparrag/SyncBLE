@@ -19,13 +19,6 @@
 #endif
 
 
-#ifndef FALSE
-#define FALSE 0
-#endif
-
-#ifndef TRUE
-#define TRUE 1
-#endif
 
 typedef enum{/*since we are using a flags for the network module this could be removed*/
 	NET_NOT_INITIALIZED,
@@ -61,8 +54,11 @@ void NET_get_service_and_attributes_by_chandler_BLE(uint16_t chandler, uint16_t 
 
 uint8_t network_get_status(void);
 
+dv_type_t NET_get_device_role(void);
+
 uint8_t NET_get_num_connections(void);/*<! return the number of connections>*/
 
+uint8_t NET_valiadate_chandler(uint16_t chandler); /*<! validate an specific connection handler >*/
+
 uint16_t NET_get_chandler_by_index (uint8_t _index); /*<! return the connection handler based on a predetermined connection index>*/
-uint8_t NET_valiadate_chandler (uint16_t _chandler); /*<! return true if the connection handler exist otherwise false>*/
 #endif /*NET_BLE_H*/
