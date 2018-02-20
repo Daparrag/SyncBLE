@@ -10,11 +10,9 @@
 
 #define TEST_SERVER
 
-#ifdef TEST_CLIENT
+#if defined(TEST_CLIENT)
 #include "media_sync_client.h"
-#endif
-
-#ifdef TEST_SERVER
+#elif defined(TEST_SERVER)	
 #include "media_sync_server.h"
 #endif
 

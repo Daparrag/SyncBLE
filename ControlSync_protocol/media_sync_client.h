@@ -225,7 +225,7 @@ ctrl_sync_param * Ctrl_Get_remote_sync_param(uint16_t chandler);
   * @retval : none
   */
 
-void Ctrl_Sync_start(uint8_t no_packets);
+void Ctrl_Sync_start(uint8_t no_peers, uint8_t no_packets);
 
 
 
@@ -256,6 +256,20 @@ void Ctrl_Sync_server_main(void);
   */
 
 void Ctrl_Sync_client_main(void);
+
+
+/**
+  * @brief  This function allows to sink devices enable the notify.
+  * @param uint8_t chandler: peer connection handler;
+  * @retval : (1) if the process is successed otherwise (0).
+  */
+static uint8_t CTRL_enable_notify(uint16_t chandler);
+
+/**
+  * @brief  This function deals to the connection interval Iterruption.
+  * @retval : none.
+  */
+void Ctrl_Sync_cinterval_IRQ_handler(void);
 
 
 
