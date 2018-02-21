@@ -166,7 +166,7 @@ uint8_t total_peers;        	/*8bits*/
 uint8_t  seq_id;
 }ctrl_sync_hdr; /*4bytes*/
 #define CTRL_HDR_PCK_SIZE		0x04	/*USED TO DEFINE THE SIZE OF THE CTRL PACKET HEADER IN BYTES*/
-
+#define CTRL_INIT_PCK_PARAM		0x06	/*USED TO DEFINE THE SIZE OF THE INIT PACKET IN BYTES*/
 
 typedef struct{
 ctrl_sync_hdr header; 				/*4bytes*/
@@ -232,11 +232,12 @@ void Ctrl_Sync_start(uint8_t no_peers, uint8_t no_packets);
 /**
   * @brief  This function is to transmit synchronously ctrl packets using the connection interval
   			interrupt.
-  * @param  : none
+  * @param  : ctrl_status_entry * CTRL_SYNC_STR:  pointer to the entry for which will sent a message. 
+  * @param  : uint8_t index :  index of the entre for which will sent a message. 
   * @retval : none
   */
 
-void Ctrl_Sync_send_pending_packets(void);
+void Ctrl_Sync_send_pending_packets( ctrl_status_entry * CTRL_SYNC_STR, uint8_t index);
 
 /**
   * @brief  This function is used as the server main control process
@@ -271,6 +272,8 @@ static uint8_t CTRL_enable_notify(uint16_t chandler);
   */
 void Ctrl_Sync_cinterval_IRQ_handler(void);
 
+
+void CTRL_sync_IRQ_Handler(void);
 
 
 

@@ -95,6 +95,8 @@ typedef ctrl_status_entry ctrl_status_table;             /*used just to clarify*
 
 static ctrl_status_table CTRL_SYNC_STR[EXPECTED_NODES]; /*synchonization control table*/
 
+volatile uint8_t Cinterval_CTRL_Started = 0;
+
 
 /**********************Static Func Def*************************/
 static void Ctrl_Sync_error_handler(void);
@@ -135,15 +137,13 @@ void Ctrl_Sync_init(app_profile_t * profile)
       COPY_VAR(ctrl_sync_tx_att.CharUUID,sync_control_TXchar_uuid);
       ctrl_sync_tx_att.charUuidType = UUID_TYPE_128;
       ctrl_sync_tx_att.charValueLen = 20;
-      ctrl_sync_tx_att.charProperties = CHAR_PROP_NOTIFY;
+      ctrl_sync_tx_att.charProperties = CHAR_PROP_WRITE | CHAR_PROP_WRITE_WITHOUT_RESP;
       ctrl_sync_tx_att.secPermissions = ATTR_PERMISSION_NONE;
-      ctrl_sync_tx_att.gattEvtMask = GATT_DONT_NOTIFY_EVENTS;
+      ctrl_sync_tx_att.gattEvtMask = GATT_NOTIFY_ATTRIBUTE_WRITE;
       ctrl_sync_tx_att.encryKeySize=16;
       ctrl_sync_tx_att.isVariable=1;
       ret= APP_add_BLE_attr(&ctrl_sync_service,&ctrl_sync_tx_att);
     if(ret!=APP_SUCCESS)Ctrl_Sync_error_handler();
-    /*INITIALIZE THE CONNECTION INTERVAL INTERRUPTION USED TO SEND DATA SYNCHRONOUSLY*/
-     BlueNRG_ConnInterval_Init(10);
 }
 
 
@@ -178,7 +178,7 @@ void Ctrl_input_packet_process(uint16_t chandler,
                 }
         
 /*process packet*/
-        }else if(attrhandler == ctrl_sync_tx_att.Associate_CharHandler+1){
+        }else if(attrhandler == ctrl_sync_tx_att.CharHandle+1){
            /*parse the header*/
            ret = parse_ctrl_sync_packet_header(att_data,data_length,&ctrl_hdr);
            if(ret == 0) Ctrl_Sync_error_handler(); /*something is worng*/
@@ -268,41 +268,48 @@ if(NET_get_device_role() == DEVICE_CENTRAL)
             /*the following values has been setting up statically based on the connection interval configuration*/
             CTRL_SYNC_STR[i].sync_param.tx_delay = TX_INTERVAL;
             CTRL_SYNC_STR[i].sync_param.slave_max_delay_diff =EXPECTED_DELAY * (1-i);
+            CTRL_SYNC_STR[i].notify_enable=TRUE; /*fixme: remove this variable for the controller is not really needed*/
             CTRL_SYNC_STR[i].pending_pack_type = INITIATOR;
             CTRL_SYNC_STR[i].pending_pack = TRUE;
       }
  }else if(NET_get_device_role() == DEVICE_PERISPHERAL){
-      /*enable notify*/
+     
 
-      for (i=0; i<num_peer_device; i++ ){
-
-            uint16_t source_id = ctrl_get_source_id(i);
-            CTRL_enable_notify(source_id);
+     for (i=0; i<num_peer_device; i++ ){
+          CTRL_SYNC_STR[i].local_sync_status = UNSTARTED;
+          CTRL_SYNC_STR[i].connect_id = ctrl_get_source_id(i);
+          CTRL_SYNC_STR[i].seq_id = 0;
+          CTRL_SYNC_STR[i].total_peers = no_peers;
+          CTRL_SYNC_STR[i].sync_param.packet_count = 0;
       }
+   
  }
 
+/*INITIALIZE THE CONNECTION INTERVAL INTERRUPTION USED TO SEND DATA SYNCHRONOUSLY*/
+     BlueNRG_ConnInterval_Init(10);
 
 }
 
+
 /**
   * @brief  This function is to transmit synchronously ctrl packets using the connection interval
-                  interrupt.
-  * @param  : none
+  			interrupt.
+  * @param  : ctrl_status_entry * CTRL_SYNC_STR:  pointer to the entry for which will sent a message. 
+  * @param  : uint8_t index :  index of the entre for which will sent a message. 
   * @retval : none
   */
-
-void Ctrl_Sync_send_pending_packets(void){
-      uint8_t i;
-
-      for (i = 0; i< num_peer_device; i++)
-      {
-            if (CTRL_SYNC_STR[i].pending_pack == TRUE){
-                  switch (CTRL_SYNC_STR[i].pending_pack_type)
+void Ctrl_Sync_send_pending_packets( ctrl_status_entry * CTRL_SYNC_STR, uint8_t index){
+     
+      
+      if (CTRL_SYNC_STR->pending_pack == TRUE &&
+                CTRL_SYNC_STR->notify_enable == TRUE 
+                  ){
+                  switch (CTRL_SYNC_STR->pending_pack_type)
                   {
                      case INITIATOR:
                      {
-                        send_ctrl_sync_packet(i,INITIATOR);
-                        CTRL_SYNC_STR[i].pending_pack = FALSE;
+                        send_ctrl_sync_packet(index,INITIATOR);
+                        CTRL_SYNC_STR->pending_pack = FALSE;
                      }
                      break;
                      case REPORT_SRC:
@@ -316,10 +323,7 @@ void Ctrl_Sync_send_pending_packets(void){
                      }
                      break;
                   }
-
-
             }
-      }
 }
 
 
@@ -341,14 +345,31 @@ void Ctrl_Sync_server_main(void)
                   /*get the events associated to CTL_protocol*/
 
                   switch (event->event_type){
-                        case EVT_BLUE_GATT_NOTIFICATION :
-                        {
-                              evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
-                              Ctrl_input_packet_process(evt->conn_handle,
-                                                        evt->attr_handle,
-                                                        evt->event_data_length,
-                                                        evt->attr_value,
-                                                        event->ISR_timestamp);
+                        
+                  case EVT_BLUE_GATT_ATTRIBUTE_MODIFIED:
+                    {
+                      uint8_t hw_version = get_harware_version();
+                      if(hw_version==IDB05A1){
+                        evt_gatt_attr_modified_IDB05A1 *evt = (evt_gatt_attr_modified_IDB05A1*)event->evt_data;
+                         Ctrl_input_packet_process(
+                                                    evt->conn_handle,
+                                                    evt->attr_handle,
+                                                    evt->data_length,
+                                                    evt->att_data,
+                                                    event->ISR_timestamp
+                                                   );
+                      }
+                    }
+                    break;
+                  
+                   case EVT_BLUE_GATT_NOTIFICATION :
+                    {
+                         evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
+                         Ctrl_input_packet_process(evt->conn_handle,
+                                                   evt->attr_handle,
+                                                   evt->event_data_length,
+                                                   evt->attr_value,
+                                                   event->ISR_timestamp);
 
                         }
                         break;
@@ -366,27 +387,51 @@ void Ctrl_Sync_server_main(void)
   * @retval : none
   */
 void Ctrl_Sync_client_main(void){
-      event_t * event;
-      event = (event_t *)HCI_Get_Event_CB();
+      /*this process simply wait for an input packet to process or if a command arrive from the application*/
+  //uint8_t i;
+  event_t * event;
+  event = (event_t *)HCI_Get_Event_CB();
 
-      if(event!=NULL && event->event_type == EVT_BLUE_GATT_ATTRIBUTE_MODIFIED){
+            if(event!=NULL){
+                  /*get the events associated to CTL_protocol*/
 
-      uint8_t hw_version = get_harware_version();
-        if(hw_version==IDB05A1){
+                  switch (event->event_type){
+                        
+                  case EVT_BLUE_GATT_ATTRIBUTE_MODIFIED:
+                    {
+                      uint8_t hw_version = get_harware_version();
+                      if(hw_version==IDB05A1){
+                        evt_gatt_attr_modified_IDB05A1 *evt = (evt_gatt_attr_modified_IDB05A1*)event->evt_data;
+                         Ctrl_input_packet_process(
+                                                    evt->conn_handle,
+                                                    evt->attr_handle,
+                                                    evt->data_length,
+                                                    evt->att_data,
+                                                    event->ISR_timestamp
+                                                   );
+                      }
+                    }
+                    break;
+                  
+                   case EVT_BLUE_GATT_NOTIFICATION :
+                    {
+                         evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
+                         Ctrl_input_packet_process(evt->conn_handle,
+                                                   evt->attr_handle,
+                                                   evt->event_data_length,
+                                                   evt->attr_value,
+                                                   event->ISR_timestamp);
 
-                evt_gatt_attr_modified_IDB05A1 *evt = (evt_gatt_attr_modified_IDB05A1*)event->evt_data;
-                Ctrl_input_packet_process(
-                                          evt->conn_handle,
-                                          evt->attr_handle,
-                                          evt->data_length,
-                                          evt->att_data,
-                                          event->ISR_timestamp
-                                          );
+                        }
+                        break;
+
+                  }
+
             }
 
-
-      }
 }
+
+
 
 /**
   * @brief  This function parse and input control-sync init or report packet header.
@@ -421,7 +466,7 @@ static uint8_t  parse_ctrl_sync_packet_header_reciver(uint8_t * data, uint8_t da
   * @retval : payload pointer offset.
   */
 
-/*static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_init_packet * init_pack)
+static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_init_packet * init_pack)
 {
       uint16_t * p = (uint16_t *)data;
 
@@ -429,9 +474,9 @@ static uint8_t  parse_ctrl_sync_packet_header_reciver(uint8_t * data, uint8_t da
       init_pack->init_sync_parter.tx_delay = *p++;
       init_pack->init_sync_parter.slave_max_delay_diff= *p++;
 
-      return (p - (uint16_t *)data);
+      return CTRL_INIT_PCK_PARAM;
 
-}*/
+}
 
 
 /**
@@ -468,6 +513,7 @@ static void send_ctrl_sync_packet(uint8_t entry_idx, uint8_t pkt_type){
       uint8_t ret;
       uint8_t tx_buffer[CTRL_INIT_PCK_SIZE];
       ctrl_init_packet init_pck;
+      uint16_t temp_chandler = ctrl_get_source_id(entry_idx); 
       //ctrl_report_src_packet src_report_pck;
 
       if(pkt_type == INITIATOR){
@@ -478,7 +524,7 @@ static void send_ctrl_sync_packet(uint8_t entry_idx, uint8_t pkt_type){
       }
 
       if(ret==0)Ctrl_Sync_error_handler();
-      res_ble = aci_gatt_update_char_value(ctrl_sync_service.ServiceHandle,ctrl_sync_tx_att.CharHandle,0,ret,tx_buffer);
+      res_ble = aci_gatt_write_without_response(temp_chandler,ctrl_sync_tx_att.Associate_CharHandler + 1,CTRL_INIT_PCK_SIZE,tx_buffer);
       if(res_ble!= BLE_STATUS_SUCCESS)Ctrl_Sync_error_handler();
 
 }
@@ -596,7 +642,7 @@ static uint8_t validate_connection_id(uint16_t chandler){
     uint8_t ret = FALSE;
     ctrl_status_entry * ptr;
 
-    for (ptr = CTRL_SYNC_STR; ptr !=NULL; ++ptr){
+    for (ptr = CTRL_SYNC_STR; ptr !=NULL; ptr++){
        if (ptr->connect_id == chandler){
             ret = TRUE;
             break;
@@ -637,7 +683,7 @@ static ctrl_status_entry * ctrl_set_new_status_entry(uint16_t chandler)
       //uint8_t i;
       //uint16_t thandler;
 
-      if (NET_valiadate_chandler(chandler) == FALSE  || num_peer_device == 0 || validate_connection_id(chandler)==TRUE )
+      if (NET_valiadate_chandler(chandler) == FALSE  || num_peer_device == 0 || validate_connection_id(chandler)==FALSE )
             return NULL;
 
       ptr = ctrl_get_new_entry();
@@ -684,7 +730,7 @@ static uint8_t parse_ctrl_sync_packet_header(uint8_t * data, uint8_t data_len, c
   * @retval : payload pointer offset.
   */
 
-static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_init_packet * init_pack)
+/*static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_init_packet * init_pack)
 {
       uint16_t * p = (uint16_t *)data;
       init_pack->init_sync_parter.packet_count             = p[0];
@@ -693,7 +739,7 @@ static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_in
 
       return CTRL_SYNC_PARM_SIZE;
 
-}
+}*/
 
 
 /**
@@ -738,8 +784,34 @@ static void Ctrl_Sync_error_handler(void)
   * @brief  This function deals to the connection interval Iterruption.
   * @retval : none.
   */
-
+volatile uint8_t ctrl_sync_id =0;
 void Ctrl_Sync_cinterval_IRQ_handler(void){
 
+  if(network_get_status())
+  {
+    switch (ctrl_sync_id){
+      case 0:
+        {
+          ctrl_sync_id=1;
+          Ctrl_Sync_send_pending_packets(&CTRL_SYNC_STR[0],0);
+        }
+        break;
+        case 1:
+        {
+          ctrl_sync_id =1;
+          Ctrl_Sync_send_pending_packets(&CTRL_SYNC_STR[1],1);
+        }
+        break;
+              
+    }
+  }
+  
+}
+
+void CTRL_sync_IRQ_Handler(){
+    if(!Cinterval_CTRL_Started){
+      Cinterval_CTRL_Started=1;
+      BlueNRG_ConnInterval_IRQ_enable();
+  }
 }
 

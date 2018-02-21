@@ -7,7 +7,7 @@
 #include "ptp_core.h"
 #include "clock.h"
 #include "debug.h"
-
+#include "media_sync_server.h"
 
 
 /** @defgroup STM32_Connection interval_interupt_Constants 
@@ -29,10 +29,15 @@
 #define BNRG_CONN_INTERV_EXTI_PORT              BNRG_CONN_INTERV_IRQ_PORT
 #define BNRG_CONN_INTERV_EXTI_PRIORITY          0x07
 
-
 #define BNRG_CONN_INTERVAL_MASK_TIME                         (5) /*Mask time for connection interval in ms*/
 
-
+/***********Software Interruptions to report the PTP synchonization Results****************/
+#if defined(STM32F401xE) || defined (STM32F411xE) || defined (STM32F446xx) || defined (STM32L476xx)
+#define PTP_NEW_SYNC_RESULT_SW_IRQn             EXTI1_IRQn
+#define PTP_NEW_SYNC_RESULT_SW_IRQHandler       EXTI1_IRQHandler
+#define PTP_NEW_SYNC_RESULT_SW_IRQ_PIN          GPIO_PIN_1
+#define PTP_NEW_SYNC_RESULT_SW_IRQ_PRIORITY     0x01
+#endif
 
 
 
