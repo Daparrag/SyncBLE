@@ -89,14 +89,11 @@ static const uint8_t  sync_control_TXchar_uuid[16] = { 0x66,0x9a,0x0c,
 static app_service_t ctrl_sync_service;                  /*service structure (used for BLE services definition)*/
 static app_attr_t ctrl_sync_tx_att;                      /*attribute structure (used for BLE attribute definition)*/
 static uint8_t num_peer_device;                          /*store the number of peer devices connected*/
-
-
-typedef ctrl_status_entry ctrl_status_table;             /*used just to clarify*/
+static ctrl_mode ctrol_op_mode = CTRL_STATIC_MODE;       /*defines the operation mode of the ctrl sync protocol*/                 
 
 static ctrl_status_table CTRL_SYNC_STR[EXPECTED_NODES]; /*synchonization control table*/
 
 volatile uint8_t Cinterval_CTRL_Started = 0;
-
 
 /**********************Static Func Def*************************/
 static void Ctrl_Sync_error_handler(void);
@@ -116,7 +113,32 @@ static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_in
 /*************************************************************/
 
 /**
-  * @brief  This function initializes the control synchronization protocol.
+  * @brief  CTRL_get_control_table This function return a pointer to the control table.
+  * @retval : ctrl_status_table *. pointer to the control table.
+  *
+  */
+
+ctrl_status_table * CTRL_get_control_table(void)
+{
+    return CTRL_SYNC_STR;
+}
+
+
+
+/**
+  * @brief  Ctrl_set_op_mode This function initializes the control synchronization protocol.
+  * @param  app_profile_t * profile : profile to associate the service.
+  * @retval : none.
+  */
+
+void Ctrl_set_op_mode(ctrl_mode op_mode){
+    ctrol_op_mode = op_mode;
+}
+
+
+/**
+  * @brief  Ctrl_Sync_init: 
+  * This function initializes the control synchronization protocol.
   * @param  app_profile_t * profile : profile to associate the service.
   * @retval : none.
   */
@@ -144,7 +166,9 @@ void Ctrl_Sync_init(app_profile_t * profile)
       ctrl_sync_tx_att.isVariable=1;
       ret= APP_add_BLE_attr(&ctrl_sync_service,&ctrl_sync_tx_att);
     if(ret!=APP_SUCCESS)Ctrl_Sync_error_handler();
-    
+
+//if(ctrol_op_mode == CTRL_DYNAMIC_MODE)
+     // init_ptp_profile(profile);
 }
 
 
@@ -285,8 +309,12 @@ if(NET_get_device_role() == DEVICE_CENTRAL)
       } 
  }
 
+if(ctrol_op_mode == CTRL_DYNAMIC_MODE)
+  ptp_Start(no_peers);
+  
+
 /*INITIALIZE THE CONNECTION INTERVAL INTERRUPTION USED TO SEND DATA SYNCHRONOUSLY*/
-     BlueNRG_ConnInterval_Init(10);
+     BlueNRG_ConnInterval_Init(10); /*this must be done by the top service*/
 
 }
 

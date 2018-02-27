@@ -10,11 +10,7 @@
 
 
 
-
 static void _Error_Handler();
-
-
-
 
 
 /******************************************************************************/
@@ -88,7 +84,10 @@ void BlueNRG_ConnInterval_IRQ_Callback(void)
 {
   BlueNRG_ConnIntervalValid = 1;
   HAL_NVIC_DisableIRQ(BNRG_CONN_INTERV_EXTI_IRQn);
-  PTP_cinterval_IRQ_Handler();
+  __HAL_GPIO_EXTI_CLEAR_IT(BNRG_CONN_INTERV_IRQ_PIN);
+  HAL_NVIC_ClearPendingIRQ(BNRG_CONN_INTERV_EXTI_IRQn);
+  //PTP_cinterval_IRQ_Handler();
+  Ctrl_Sync_cinterval_IRQ_handler();
   //BlueNRG_ConnInterval_Handler();
 }
 
@@ -111,6 +110,8 @@ void BlueNRG_ConnInterval_IRQ_enable (void)
 
 
 
+
+
 /******************************************************************************/
 /*
 
@@ -124,8 +125,10 @@ void BlueNRG_ConnInterval_IRQ_enable (void)
 
 */
 
+
 TIM_HandleTypeDef  TimHandle;
 void TIM2_IRQHandler(void);
+
 
 /**
   * @brief  This function configures the TIM2. 
@@ -265,10 +268,27 @@ void ptp_update_interrupt(uint32_t period, uint32_t TickPriority)
 
 
 void TIM2_IRQHandler(void){  
-  BSP_ADD_LED_Toggle(ADD_LED2);
-  PTP_SYNC_IRQ_Handler();
+  CTRL_sync_IRQ_Handler();
   HAL_TIM_IRQHandler(&TimHandle);
 }  
+
+
+
+/**
+  * @brief  ptp_to_ctrl_init 
+  * @note   update the parameters of the interruption.
+  * @param  None
+  * @retval None
+  */
+
+void ptp_to_ctrl_init(void){
+    HAL_NVIC_SetPriority((IRQn_Type)PTP_NEW_SYNC_RESULT_SW_IRQn, PTP_NEW_SYNC_RESULT_SW_IRQ_PRIORITY, 0 );
+    HAL_NVIC_EnableIRQ((IRQn_Type)PTP_NEW_SYNC_RESULT_SW_IRQn);
+}
+
+
+/******************************************************************************/
+
 
 
 void _Error_Handler(char * file, int line)

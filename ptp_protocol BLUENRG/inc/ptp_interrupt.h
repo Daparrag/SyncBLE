@@ -53,5 +53,17 @@ void BlueNRG_ConnInterval_IRQ_Callback(void);
 void BlueNRG_ConnInterval_IRQ_enable(void);
 
 
+/********PTP-to-CTRL-func********************/
+
+/**
+  * @brief  ptp_to_ctrl_init 
+  * @note   update the parameters of the interruption.
+  * @param  None
+  * @retval None
+  */
+
+void ptp_to_ctrl_init(void);
+
+
 //void TIM2_IRQHandler(void);
 #endif /*PTP_INTERRUPT_H*/
