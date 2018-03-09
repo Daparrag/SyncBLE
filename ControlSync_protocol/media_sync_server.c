@@ -85,7 +85,6 @@ static const uint8_t  sync_control_TXchar_uuid[16] = { 0x66,0x9a,0x0c,
             0x20,0x00,0x08,0x96,0x9e,0xe3,0x11,0x9f,0xb1,0xe1,0xf2,0x73,
             0xd9};
 
-
 static app_service_t ctrl_sync_service;                  /*service structure (used for BLE services definition)*/
 static app_attr_t ctrl_sync_tx_att;                      /*attribute structure (used for BLE attribute definition)*/
 static uint8_t num_peer_device;                          /*store the number of peer devices connected*/
@@ -151,14 +150,14 @@ void Ctrl_Sync_init(app_profile_t * profile)
       COPY_VAR(ctrl_sync_service.ServiceUUID,sync_control_service_uuid);
       ctrl_sync_service.service_uuid_type=UUID_TYPE_128;
       ctrl_sync_service.service_type=PRIMARY_SERVICE;
-      ctrl_sync_service.max_attr_records=7;
+      ctrl_sync_service.max_attr_records=3;
       /*copy the and associate the service to the BLE application profile*/
       ret = APP_add_BLE_Service(profile,&ctrl_sync_service);
       if(ret!=APP_SUCCESS) Ctrl_Sync_error_handler();
       /*2. configure the  Ctrl_Sync attribute and associate it to the Ctrl_Sync service*/
       COPY_VAR(ctrl_sync_tx_att.CharUUID,sync_control_TXchar_uuid);
       ctrl_sync_tx_att.charUuidType = UUID_TYPE_128;
-      ctrl_sync_tx_att.charValueLen = 20;
+      ctrl_sync_tx_att.charValueLen = 12;
       ctrl_sync_tx_att.charProperties = CHAR_PROP_WRITE | CHAR_PROP_WRITE_WITHOUT_RESP;
       ctrl_sync_tx_att.secPermissions = ATTR_PERMISSION_NONE;
       ctrl_sync_tx_att.gattEvtMask = GATT_NOTIFY_ATTRIBUTE_WRITE;
@@ -169,6 +168,7 @@ void Ctrl_Sync_init(app_profile_t * profile)
 
 //if(ctrol_op_mode == CTRL_DYNAMIC_MODE)
      // init_ptp_profile(profile);
+    //init_ptp_profile(profile);
 }
 
 
@@ -286,13 +286,14 @@ if(NET_get_device_role() == DEVICE_CENTRAL)
       {
             CTRL_SYNC_STR[i].local_sync_status = UNSTARTED;
             CTRL_SYNC_STR[i].connect_id = ctrl_get_source_id(i);
-            CTRL_SYNC_STR[i].seq_id = 0;
+            CTRL_SYNC_STR[i].seq_id = i+1;
             CTRL_SYNC_STR[i].total_peers = no_peers;
             CTRL_SYNC_STR[i].sync_param.packet_count = 0;
             /*(optionally)the following values could be acquiered using the ptp protocol or another*/
             /*the following values has been setting up statically based on the connection interval configuration*/
             CTRL_SYNC_STR[i].sync_param.tx_delay = TX_INTERVAL;
             CTRL_SYNC_STR[i].sync_param.slave_max_delay_diff =EXPECTED_DELAY * (1-i);
+            CTRL_enable_notify(CTRL_SYNC_STR[i].connect_id);
             CTRL_SYNC_STR[i].notify_enable=TRUE; /*fixme: remove this variable for the controller is not really needed*/
             CTRL_SYNC_STR[i].pending_pack_type = INITIATOR;
             CTRL_SYNC_STR[i].pending_pack = TRUE;
@@ -309,12 +310,14 @@ if(NET_get_device_role() == DEVICE_CENTRAL)
       } 
  }
 
-if(ctrol_op_mode == CTRL_DYNAMIC_MODE)
-  ptp_Start(no_peers);
+//if(ctrol_op_mode == CTRL_DYNAMIC_MODE)
+ // ptp_Start(no_peers);
   
 
 /*INITIALIZE THE CONNECTION INTERVAL INTERRUPTION USED TO SEND DATA SYNCHRONOUSLY*/
-     BlueNRG_ConnInterval_Init(10); /*this must be done by the top service*/
+#if defined (TEST_CTRL_SERV)          
+     BlueNRG_ConnInterval_Init(10); /*this must be done by the top API*/
+#endif     
 
 }
 
@@ -539,7 +542,7 @@ static void send_ctrl_sync_packet(uint8_t entry_idx, uint8_t pkt_type){
 
       tBleStatus res_ble;
       uint8_t ret;
-      uint8_t tx_buffer[CTRL_INIT_PCK_SIZE];
+      uint8_t tx_buffer[CTRL_INIT_PCK_SIZE+1];
       ctrl_init_packet init_pck;
       uint16_t temp_chandler = ctrl_get_source_id(entry_idx); 
       //ctrl_report_src_packet src_report_pck;
@@ -552,7 +555,7 @@ static void send_ctrl_sync_packet(uint8_t entry_idx, uint8_t pkt_type){
       }
 
       if(ret==0)Ctrl_Sync_error_handler();
-      res_ble = aci_gatt_write_without_response(temp_chandler,ctrl_sync_tx_att.Associate_CharHandler + 1,CTRL_INIT_PCK_SIZE,tx_buffer);
+      res_ble = aci_gatt_write_without_response(temp_chandler,ctrl_sync_tx_att.Associate_CharHandler + 1,CTRL_INIT_PCK_SIZE+1,tx_buffer);
       if(res_ble!= BLE_STATUS_SUCCESS)Ctrl_Sync_error_handler();
 
 }
@@ -585,7 +588,7 @@ static void send_ctrl_sync_packet(uint8_t entry_idx, uint8_t pkt_type){
       *p++ =  (init_pkt_str->init_sync_parter.tx_delay & 0xFF);
 
       *p++ =  ((init_pkt_str->init_sync_parter.slave_max_delay_diff & 0x00FF)>>8);
-      *p++ =  (init_pkt_str->init_sync_parter.slave_max_delay_diff & 0xFF);
+      *p =  (init_pkt_str->init_sync_parter.slave_max_delay_diff & 0xFF);
 
       return (p - buff);
 
@@ -796,6 +799,7 @@ static void process_init_packet(ctrl_init_packet * init_pack, uint16_t chandler)
 
 /**
   * @brief  This function stops the program execution in case of error.
+  * param: none
   * @retval : none.
   */
 
@@ -810,6 +814,7 @@ static void Ctrl_Sync_error_handler(void)
 
 /**
   * @brief  This function deals to the connection interval Iterruption.
+  * param: none 
   * @retval : none.
   */
 volatile uint8_t ctrl_sync_id =0;
@@ -826,7 +831,7 @@ void Ctrl_Sync_cinterval_IRQ_handler(void){
         break;
         case 1:
         {
-          ctrl_sync_id =1;
+          ctrl_sync_id =0;
           Ctrl_Sync_send_pending_packets(&CTRL_SYNC_STR[1],1);
         }
         break;
@@ -836,10 +841,65 @@ void Ctrl_Sync_cinterval_IRQ_handler(void){
   
 }
 
+/**
+  * @brief CTRL_sync: 
+  *This function automatically send the control synchonization parameters
+  * to all the peer devices.
+  * @parm: none
+  * @retval : none.
+  */
+
+void CTRL_sync()
+{
+   uint8_t i = num_peer_device;
+    ctrl_status_entry * ptr = CTRL_SYNC_STR;
+    for (;i > 0; i-- ){
+      switch (ptr->local_sync_status){
+      case UNSTARTED:
+        {
+          /*send initial_packet*/
+          ptr->pending_pack_type = INITIATOR;
+          ptr->pending_pack=TRUE;
+        }
+        break;
+      case IDLE:
+        {
+          /*send report_packet*/
+          ptr->pending_pack_type = REPORT_SRC;
+          ptr->pending_pack=TRUE;
+        }
+        break;
+      }
+    ptr++;  
+    }
+}
+
+/**
+  * @brief CTRL_sync_send_sp_pk: 
+  *This function send and specific packet type to all the peer devices
+  * @parm: none
+  * @retval : none.
+  */
+void CTRL_sync_send_sp_pk(uint8_t PK_type)
+{
+    uint8_t i = num_peer_device;
+    ctrl_status_entry * ptr = CTRL_SYNC_STR;
+    
+    for (; i>0; i--){
+      ptr->pending_pack_type = PK_type;
+      ptr->pending_pack=TRUE;
+      ptr++;
+    }
+}
+
+
+
 void CTRL_sync_IRQ_Handler(){
     if(!Cinterval_CTRL_Started){
       Cinterval_CTRL_Started=1;
+#if defined(TEST_MEDIA_SYNC_SERVER)      
       BlueNRG_ConnInterval_IRQ_enable();
+#endif      
   }
 }
 

@@ -62,9 +62,12 @@ typedef struct media_ctrl_ media_ctrl_parameters;
 void MDIA_init_service(app_profile_t * profile, sync_mode_t mode);
 void MDIA_dinit_service(void);
 void MDIA_get_sync_parameters(media_ctrl_parameters * );
+void MDIA_start_service(uint8_t npeers);
 void MDIA_set_periodic_sync(uint32_t period);
 void MDIA_dable_periodic_sync(void);
 void MDIA_eable_periodic_sync(void);
+void MDIA_server_main(void);
+void Media_cinterval_IRQ_Handler (void);
 /*no yet_implemented*/
 void MDIA_get_media_sync_config(void);
 void MDIA_dsble_service(void);

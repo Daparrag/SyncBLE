@@ -1,6 +1,7 @@
 
 
  #include "test_media_service.h"
+ #include  "ptp_interrupt.h"
 
 
 app_profile_t PROFILE;
@@ -53,5 +54,52 @@ APP_Status ret_app;
 
 /*1.3 initialize the media_services as dynamic*/
      MDIA_init_service(&PROFILE,DYNAMIC_CONTROL);
+
+/*2.0 init the the network module*/
+     network_t * network_config; 
+    ret_net = init_network(NET_CONNECTED, DEVICE_CENTRAL,0x2,&network_config);   
+    if(ret_net != NET_SUCCESS)while(1);
+/*3.0   
+     server is the one who must scan for the control attributes associated to client-peer devices.*/                
+      uint8_t list_index [] = {0,1};        
+      ret_net= service_handler_config(FIND_SPE_SERVICE,FIND_SPE_CHAR,list_index,2); /*ptp_client is who has to synchonize therefore for this solution is no needed to scan ptp_server services */
+       if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
+
+/*4.0 
+      associate this profile to both connections*/           
+      ret_net = net_setup_profile_definition (&PROFILE,list_index,sizeof(list_index));
+      if(ret_net!=NET_SUCCESS)while(1);/*an error occur*/
+     connection_handler_set_discovery_config(&DISC_config);
      
+ /*5.0
+        run the connection procedure until the connection 
+	and service discovery is sucessed*/
+	do{
+		network_process();
+		HCI_Packet_Release_Event_CB();	
+
+	}while(network_get_status() != 1);
+
+/*6.0 
+        lets start the MDIA Service.*/
+	uint8_t receivers = NET_get_num_connections();
+        MDIA_start_service(receivers);
+        
+/*7.0*/
+     /*initialize and enable the connection interval interruption*/
+        BlueNRG_ConnInterval_Init(10);
+	BlueNRG_ConnInterval_IRQ_enable();
+        
+/*8.0*/
+    /*lets everything works automatically*/
+        
+   while(1){
+#if defined(TEST_SERVER)     
+   MDIA_server_main();
+#elif defined(TEST_CLIENT)
+   MDIA_client_main();
+#endif
+   HCI_Packet_Release_Event_CB();
+   }	
+          
 }

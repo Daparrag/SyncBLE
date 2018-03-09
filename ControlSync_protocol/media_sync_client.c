@@ -78,11 +78,11 @@
 
 /**********Control service UUID specification********/
 static const uint8_t sync_control_service_uuid[16] = { 0x66, 0x9a, 0x0c,
-            0x20, 0x00, 0x08, 0x96, 0x9e, 0xe2, 0x11, 0x9f, 0xb1, 0xf0, 0xf2, 0x73,
+            0x20, 0x00, 0x08, 0x96, 0x9e, 0xe3, 0x11, 0x9f, 0xb1, 0xf0, 0xf2, 0x73,
             0xd9 };
 
 static const uint8_t  sync_control_TXchar_uuid[16] = { 0x66,0x9a,0x0c,
-            0x20,0x00,0x08,0x96,0x9e,0xe2,0x11,0x9f,0xb1,0xe1,0xf2,0x73,
+            0x20,0x00,0x08,0x96,0x9e,0xe3,0x11,0x9f,0xb1,0xe1,0xf2,0x73,
             0xd9};
 
 
@@ -91,7 +91,7 @@ static app_attr_t ctrl_sync_tx_att;                      /*attribute structure (
 static uint8_t num_peer_device;                          /*store the number of peer devices connected*/
 
 
-typedef ctrl_status_entry ctrl_status_table;             /*used just to clarify*/
+//typedef ctrl_status_entry ctrl_status_table;             /*used just to clarify*/
 
 static ctrl_status_table CTRL_SYNC_STR[EXPECTED_NODES]; /*synchonization control table*/
 
@@ -129,14 +129,14 @@ void Ctrl_Sync_init(app_profile_t * profile)
       COPY_VAR(ctrl_sync_service.ServiceUUID,sync_control_service_uuid);
       ctrl_sync_service.service_uuid_type=UUID_TYPE_128;
       ctrl_sync_service.service_type=PRIMARY_SERVICE;
-      ctrl_sync_service.max_attr_records=7;
+      ctrl_sync_service.max_attr_records=3;
       /*copy the and associate the service to the BLE application profile*/
       ret = APP_add_BLE_Service(profile,&ctrl_sync_service);
       if(ret!=APP_SUCCESS) Ctrl_Sync_error_handler();
       /*2. configure the  Ctrl_Sync attribute and associate it to the Ctrl_Sync service*/
       COPY_VAR(ctrl_sync_tx_att.CharUUID,sync_control_TXchar_uuid);
       ctrl_sync_tx_att.charUuidType = UUID_TYPE_128;
-      ctrl_sync_tx_att.charValueLen = 20;
+      ctrl_sync_tx_att.charValueLen = 12;
       ctrl_sync_tx_att.charProperties = CHAR_PROP_WRITE | CHAR_PROP_WRITE_WITHOUT_RESP;
       ctrl_sync_tx_att.secPermissions = ATTR_PERMISSION_NONE;
       ctrl_sync_tx_att.gattEvtMask = GATT_NOTIFY_ATTRIBUTE_WRITE;
@@ -286,8 +286,9 @@ if(NET_get_device_role() == DEVICE_CENTRAL)
  }
 
 /*INITIALIZE THE CONNECTION INTERVAL INTERRUPTION USED TO SEND DATA SYNCHRONOUSLY*/
-     BlueNRG_ConnInterval_Init(10);
-
+#if defined(TEST_CTRL_SERV)
+    BlueNRG_ConnInterval_Init(10);
+#endif
 }
 
 
@@ -468,13 +469,16 @@ static uint8_t  parse_ctrl_sync_packet_header_reciver(uint8_t * data, uint8_t da
 
 static uint8_t  parse_ctrl_init_packet(uint8_t * data, uint8_t data_len, ctrl_init_packet * init_pack)
 {
-      uint16_t * p = (uint16_t *)data;
-
-      init_pack->init_sync_parter.packet_count = *p++;
-      init_pack->init_sync_parter.tx_delay = *p++;
-      init_pack->init_sync_parter.slave_max_delay_diff= *p++;
-
-      return CTRL_INIT_PCK_PARAM;
+      uint8_t * p = (uint8_t *)data;
+      uint16_t temp_val;
+      
+      temp_val = (*p++) << 8; 
+      init_pack->init_sync_parter.packet_count = temp_val | *p++;
+      temp_val = (*p++) << 8;
+      init_pack->init_sync_parter.tx_delay = temp_val | *p++;
+      temp_val = (*p++) << 8;
+      init_pack->init_sync_parter.slave_max_delay_diff= temp_val | *p;
+      return(p-data);
 
 }
 
@@ -712,12 +716,13 @@ static uint8_t parse_ctrl_sync_packet_header(uint8_t * data, uint8_t data_len, c
 
       p=data;
 
-      hdr->pkt_type =         p[0];
-      hdr->connect_id =       ((p[1]<<8) | (p[2]));
-      hdr->total_peers =      p[3];
-      hdr->seq_id =           p[4];
+      hdr->pkt_type =         *p++;
+      uint16_t temp_cid =      ((*p++<<8));
+      hdr->connect_id = temp_cid | (*p++);
+      hdr->total_peers =      *p++;
+      hdr->seq_id =           *p++;
 
-      return CTRL_HDR_PCK_SIZE;
+      return (p-data);
 
 }
 
@@ -798,7 +803,7 @@ void Ctrl_Sync_cinterval_IRQ_handler(void){
         break;
         case 1:
         {
-          ctrl_sync_id =1;
+          ctrl_sync_id =0;
           Ctrl_Sync_send_pending_packets(&CTRL_SYNC_STR[1],1);
         }
         break;
@@ -814,4 +819,3 @@ void CTRL_sync_IRQ_Handler(){
       BlueNRG_ConnInterval_IRQ_enable();
   }
 }
-

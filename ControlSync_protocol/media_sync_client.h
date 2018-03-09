@@ -102,7 +102,11 @@ typedef enum
 	CTRL_FAIL		/*Operation failed*/
 }ctrl_sync_resp;
 
-
+typedef enum 
+{
+  CTRL_STATIC_MODE,
+  CTRL_DYNAMIC_MODE
+}ctrl_mode;
 
 /**
   * @brief  This struct defines the status of the control protocol.
@@ -143,6 +147,7 @@ typedef struct
 	volatile uint8_t pending_pack_type;
 }ctrl_status_entry;
 
+typedef ctrl_status_entry ctrl_status_table;             /*used just to clarify*/
 
 /**********CTRL Message Definition***********************/
 
@@ -174,6 +179,27 @@ ctrl_sync_param  init_sync_parter;  /*6bytes*/
 }ctrl_init_packet; /*10bytes*/
 
 #define CTRL_INIT_PCK_SIZE		0x0A	/*USED TO DEFINE THE SIZE OF THE INIT PACKET IN BYTES*/
+
+
+/**
+  * @brief  CTRL_get_control_table This function return a pointer to the control table.
+  * @retval : ctrl_status_table *. pointer to the control table.
+  *
+  */
+
+ctrl_status_table * CTRL_get_control_table(void);
+
+
+
+
+/**
+  * @brief  Ctrl_set_op_mode This function initializes the control synchronization protocol.
+  * @param  app_profile_t * profile : profile to associate the service.
+  * @retval : none.
+  */
+
+void Ctrl_set_op_mode(ctrl_mode op_mode);
+
 
 /**
   * @brief  This function initializes the control synchronization protocol.
@@ -265,6 +291,26 @@ void Ctrl_Sync_client_main(void);
   * @retval : (1) if the process is successed otherwise (0).
   */
 static uint8_t CTRL_enable_notify(uint16_t chandler);
+
+
+/**
+  * @brief CTRL_sync: 
+  *This function automatically send the control synchonization parameters
+  * to all the peer devices.
+  * @parm: none
+  * @retval : none.
+  */
+void CTRL_sync();
+
+/**
+  * @brief CTRL_sync_send_sp_pk: 
+  *This function send and specific packet type to all the peer devices
+  * @parm: none
+  * @retval : none.
+  */
+void CTRL_sync_send_sp_pk(uint8_t PK_type);
+
+
 
 /**
   * @brief  This function deals to the connection interval Iterruption.

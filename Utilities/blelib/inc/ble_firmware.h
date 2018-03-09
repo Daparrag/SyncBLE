@@ -172,7 +172,8 @@ typedef enum{
 
 typedef enum service_State{
   ST_SERVICE_DISCOVERY,							/*!< Device looking for services >*/
-  ST_CHAR_DISCOVERY					      /*!< Device looking for characteristics >*/
+  ST_CHAR_DISCOVERY,					      /*!< Device looking for characteristics >*/
+  ST_DISC_COMPLETED  
 }sv_state_t;
 
 

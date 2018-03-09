@@ -5,7 +5,7 @@
 
 media_service_t CTRL_TABLE [SYNC_GROUPS];
 static media_status_t service_status = MDIA_DINIT;
-
+static sync_mode_t mdia_mode = STATIC_CONTROL; /*default control mode*/
 /*****************static-func******************/
 static media_service_t * get_free_mdia_entry(void);
 
@@ -31,12 +31,14 @@ return 0;
 void MDIA_init_service(app_profile_t * profile, sync_mode_t mode)
 {	
 	if (service_status != MDIA_DINIT)return;
-	if(mode == DYNAMIC_CONTROL)
-		Ctrl_set_op_mode(CTRL_DYNAMIC_MODE);
+	mdia_mode = mode;
 /* 1.0 associate control and/or the ptp service to a profile*/
-	Ctrl_Sync_init(profile);
-	init_ptp_profile(profile);
-	
+   Ctrl_Sync_init(profile);
+    if(mode == DYNAMIC_CONTROL){
+		Ctrl_set_op_mode(CTRL_DYNAMIC_MODE);	
+		init_ptp_profile(profile);
+	}
+
 	service_status = MDIA_INIT;	
 
 }
@@ -64,11 +66,35 @@ void MDIA_start_service(uint8_t npeers){
 	/* 1.0 Start the control synchronization protocol and/or the ptp_protocol */
 	if(service_status != MDIA_INIT  || !network_get_status())return;
 	Ctrl_Sync_start(npeers,0);
-	service_status = MDIA_EABLE;	
+	if(mdia_mode == DYNAMIC_CONTROL) ptp_Start(npeers);
+	service_status = MDIA_EABLE;
+/* the initialization an configuration of the connection interval is delegated to the application */		
 }
 
 
 
+/**
+  * @brief  MDIA_run_synchonize: 
+  * This function send the synchonization signal to all the peer devices.
+  * @param:   none.
+  * @retval : none.
+  */
+void MDIA_run_synchonize(){
+	/*this function send the synchonization signal to all the peer devices*/
+	/**/
+		CTRL_sync();
+		if(mdia_mode == DYNAMIC_CONTROL)
+		PTP_SYNC();
+}
+
+
+
+/**
+  * @brief  MDIA_get_sync_parameters: 
+  * This function return the sync parameters to be used by the API.
+  * @param  uint8_t npeers.
+  * @retval : none.
+  */
 void MDIA_get_sync_parameters(media_ctrl_parameters * tmp_sync_parm)
 {
     uint8_t i;
@@ -87,6 +113,18 @@ void MDIA_get_sync_parameters(media_ctrl_parameters * tmp_sync_parm)
 
     }while(i!=0);
 
+}
+
+/**
+  * @brief  MDIA_server_main: 
+  * This function is the main process of the synchronization framework.
+  * @param  uint8_t npeers.
+  * @retval : none.
+  */
+void MDIA_server_main(){
+	Ctrl_Sync_server_main();
+if(mdia_mode == DYNAMIC_CONTROL)	
+	ptp_server_sync_process();
 }
 
 
@@ -135,4 +173,9 @@ void MDIA_eable_periodic_sync()
 	PTP_SYNC_enable_periodic_sync();
 }
 
+void Media_cinterval_IRQ_Handler (void){
+  if(mdia_mode == DYNAMIC_CONTROL) PTP_cinterval_IRQ_Handler();
+  Ctrl_Sync_cinterval_IRQ_handler();
+}
+  
 

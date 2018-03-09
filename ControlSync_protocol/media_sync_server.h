@@ -79,8 +79,8 @@
 /*This configuration works initially only for two nodes estimated with the specification of <blefw_conf.h> */
 #define IFS						(1.5)
 #define PACKETS_SYNC_CINTERVAL 	 (4)
-#define TX_INTERVAL 	 		 ((CONN_P1 + CONN_P2)/2)
-#define EXPECTED_DELAY			 (((CONN_L1 + CONN_L2)/2) +  IFS)
+#define TX_INTERVAL 	 		 ((CONN_P1 + CONN_P2)/2)*1.25f
+#define EXPECTED_DELAY			 (((CONN_L1 + CONN_L2)/2) * 0.625f +  IFS)
 
 
 #ifdef USE_PTP_PROTOCOL
@@ -291,6 +291,26 @@ void Ctrl_Sync_client_main(void);
   * @retval : (1) if the process is successed otherwise (0).
   */
 static uint8_t CTRL_enable_notify(uint16_t chandler);
+
+
+/**
+  * @brief CTRL_sync: 
+  *This function automatically send the control synchonization parameters
+  * to all the peer devices.
+  * @parm: none
+  * @retval : none.
+  */
+void CTRL_sync();
+
+/**
+  * @brief CTRL_sync_send_sp_pk: 
+  *This function send and specific packet type to all the peer devices
+  * @parm: none
+  * @retval : none.
+  */
+void CTRL_sync_send_sp_pk(uint8_t PK_type);
+
+
 
 /**
   * @brief  This function deals to the connection interval Iterruption.
