@@ -110,6 +110,9 @@ void PTP_SYNC_desable_periodic_sync(void);
 void PTP_SYNC_update_periodic_sync(uint32_t period);
 void PTP_SYNC_switch_off_periodic_sync(void);
 void PTP_SYNC_IRQ_Handler();
+ptp_status_table * PTP_GET_status_tbl();
+void PTP_cinterval_IRQ_Handler_idx(uint32_t idx);
+
 
 /****Functions between PTP_SYNC and CTRL_SYNC*****/
 

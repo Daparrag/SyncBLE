@@ -61,7 +61,7 @@
 #endif
 
 #define PRINT_PTP 1
-#define Cinterval 1
+#define Cinterval 0
 
 
 #ifndef COPY_VAR
@@ -84,7 +84,10 @@ static ptp_status_table PTPStatus [EXPECTED_CENTRAL_NODES]/*form the slaves*/
 static app_service_t bleptp_service;
 static app_attr_t bleptp_tx_att;
 static app_attr_t bleptp_rx_att;
+
+static uint8_t count=0;
 /**************************Service ID's*************************/
+
 static const uint8_t ptp_service_uuid[16] = { 0x66, 0x9a, 0x0c,
 		0x20, 0x00, 0x08, 0x96, 0x9e, 0xe2, 0x11, 0x9e, 0xb1, 0xf0, 0xf2, 0x73,
 		0xd9 };
@@ -115,6 +118,7 @@ static uint8_t ptp_send_ptp_packet(uint16_t chandler,
 static void clear_flags(void);
 static void send_Cinterval_pkt_client(ptp_status_table * st_sync_node);
 static void send_Cinterval_pkt_server(ptp_status_table * st_sync_node);
+
 
 
 
@@ -154,13 +158,25 @@ static void clear_flags()
   for(i=0; i < max_number_entries; i++){
     PTPStatus[i].ptp_state = PTP_FORWARD;
   }
-   
+  count=0;
   //printf("---------------------------------sync_success--------------------\n");
   sync_success=TRUE; 
+  HAL_NVIC_SetPendingIRQ(PTP_NEW_SYNC_RESULT_SW_IRQn);
  /* enable_test_fun();*/
   
 }
 
+
+
+
+/**
+* @brief  PTP_GET_status_tbl: This function returns the respective PTP_status_table.
+  * @retval ptp_status_table * : Current PTP_status TBL.
+  */
+
+ptp_status_table * PTP_GET_status_tbl(){
+    return PTPStatus;
+}
 
 
 /**
@@ -513,7 +529,7 @@ void init_ptp_profile(app_profile_t * profile){
   COPY_VAR(bleptp_service.ServiceUUID,ptp_service_uuid);
   bleptp_service.service_uuid_type=UUID_TYPE_128;
   bleptp_service.service_type=PRIMARY_SERVICE;
-  bleptp_service.max_attr_records=7;
+  bleptp_service.max_attr_records=8;
   /*copy the and associate the service to the BLE application profile*/
   ret = APP_add_BLE_Service(profile,&bleptp_service);
   
@@ -521,7 +537,7 @@ void init_ptp_profile(app_profile_t * profile){
   /*create the ptp_TX_attribute*/
   COPY_VAR(bleptp_tx_att.CharUUID,ptp_TXchar_uuid);
   bleptp_tx_att.charUuidType = UUID_TYPE_128;
-  bleptp_tx_att.charValueLen = 20;
+  bleptp_tx_att.charValueLen = 13;
   bleptp_tx_att.charProperties = CHAR_PROP_NOTIFY;
   bleptp_tx_att.secPermissions = ATTR_PERMISSION_NONE;
   bleptp_tx_att.gattEvtMask = GATT_DONT_NOTIFY_EVENTS;
@@ -533,7 +549,7 @@ void init_ptp_profile(app_profile_t * profile){
   /*create the ptp_RX_attribute*/
    COPY_VAR(bleptp_rx_att.CharUUID,ptp_RXchar_uuid);
   bleptp_rx_att.charUuidType = UUID_TYPE_128;
-  bleptp_rx_att.charValueLen = 20;
+  bleptp_rx_att.charValueLen = 13;
   bleptp_rx_att.charProperties = CHAR_PROP_WRITE | CHAR_PROP_WRITE_WITHOUT_RESP;
   bleptp_rx_att.secPermissions = ATTR_PERMISSION_NONE;
   bleptp_rx_att.gattEvtMask = GATT_NOTIFY_ATTRIBUTE_WRITE;
@@ -548,19 +564,28 @@ void ptp_Start(uint8_t no_peers)
 {
   max_number_entries =  no_peers;
   uint8_t i;
-   
+  ptp_status_table * ptr = PTPStatus;
+    
  /*initialize the ptp_protocol_status and variables*/
 clock_reset();  
 
-  for(i=0; i <max_number_entries;i ++){	
-	PTPStatus[i].ptp_state=PTP_INIT;
-        PTPStatus[i].seq_number=0;
-        PTPStatus[i].pending_tx=0;
-  }
-
-  if(NET_get_device_role() == DEVICE_CENTRAL) 
+  for (i=0; i<no_peers; i++ ){
+      ptr->Chandler =  NET_get_chandler_by_index (i);
+      ptr->node_id= i+1;
+      ptr->ptp_state = PTP_INIT;
+      ptr->seq_number=0;
+      ptr->pending_tx=0;  
+      ptr++;
+  } 
+ // if(NET_get_device_role() == DEVICE_CENTRAL) 
  /*init the virtual Clock*/ 
-   clock_Init();  
+  #if defined (TEST_PTP_SERVICE) 
+  BlueNRG_ConnInterval_Init(10); /*this must be define by the top API*/
+  #endif
+  
+  
+   clock_Init();
+   sync_success=TRUE;
 }
 
 /**
@@ -666,7 +691,27 @@ void ptp_server_sync_process(){
 
 }
 
+void ptp_server_sync_process_temp_new(){
+    
+  if (sync_success != TRUE){
+		/*the ptp_server device needs to resynchronize*/
+		event_t * event;
+  		event = (event_t *)HCI_Get_Event_CB();
 
+  		if(event!=NULL && event->event_type== EVT_BLUE_GATT_NOTIFICATION){
+  			/*get the events associated to ptp protocol*/
+
+  			evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
+           			input_packet_process  (evt->conn_handle,
+           									 evt->attr_handle,
+           									 evt->event_data_length,
+           									 evt->attr_value,
+           									 event->ISR_timestamp
+           									 );
+                }  
+        
+      }
+}
 
 /**
   * @brief  set_connection_clients: associate a Chandler to and specific entry in the PTP_CTRL_TABLE.
@@ -822,7 +867,7 @@ BSP_ADD_LED_On(ADD_LED2);
 BSP_ADD_LED_Off(ADD_LED2);
 #endif            
            st_sync_node->ptp_state = PTP_SYNCH;
-           sync_success=TRUE;
+           count+=1;
            
 
 #if PRINT_PTP                                                  
@@ -912,6 +957,27 @@ BSP_ADD_LED_Off(ADD_LED2);
 volatile uint8_t sync_id = 0;
 
 
+/**
+  * @brief  PTP_cinterval_IRQ_Handler 
+  * This function handler the corresponding C-interval to a corresponding idx
+  * @param uint32_t idx: connection interval index
+  * @return: none.
+  */
+void PTP_cinterval_IRQ_Handler_idx(uint32_t idx)
+{
+
+#if Cinterval
+BSP_ADD_LED_On(ADD_LED4);
+BSP_ADD_LED_Off(ADD_LED4);
+#endif   
+  
+  send_Cinterval_pkt_server(&PTPStatus[idx]); 
+  if(count==2){
+  clear_flags();
+  }
+  
+}
+
 
 /**
   * @brief  PTP_cinterval_IRQ_Handler This function handler the corresponding C-interval
@@ -965,7 +1031,9 @@ send_Cinterval_pkt_server(&PTPStatus[1]);
   */
 void PTP_SYNC (void){
 sync_success=FALSE;
-BlueNRG_ConnInterval_IRQ_enable();
+#if defined(TEST_PTP_SERVICE)
+//BlueNRG_ConnInterval_IRQ_enable();
+#endif
 }
 
 
@@ -1029,9 +1097,11 @@ void PTP_SYNC_switch_off_periodic_sync(void){
 void PTP_SYNC_IRQ_Handler(){
 	sync_success=FALSE;
         if(!Cinterval_started){
-        Cinterval_started = 1;  
+        Cinterval_started = 1;
+#if defined(TEST_PTP_SERVICE)                          
         BlueNRG_ConnInterval_IRQ_enable();
-        }
+#endif
+      }        
 }
 
 /**
@@ -1039,7 +1109,7 @@ void PTP_SYNC_IRQ_Handler(){
   * the synchonization Parameters at the Control Services.   
   * @return : none
   */
-void PTP_Update_CTRL_Parameters_Callback(){
+void PTP_Update_CTRL_Parameters_Callback(void){
   /**/
 }
 

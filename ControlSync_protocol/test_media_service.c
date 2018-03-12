@@ -90,9 +90,16 @@ APP_Status ret_app;
         BlueNRG_ConnInterval_Init(10);
 	BlueNRG_ConnInterval_IRQ_enable();
         
+/*8.0 init a LED in case of test*/
+//#if defined( DEBUG_MDA )
+BSP_ADD_LED_Init(ADD_LED2);
+BSP_ADD_LED_Off(ADD_LED2);
+//#endif         
+        
+        
 /*8.0*/
     /*lets everything works automatically*/
-        
+   MDIA_run_synchonize();
    while(1){
 #if defined(TEST_SERVER)     
    MDIA_server_main();

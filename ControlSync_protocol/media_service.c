@@ -82,7 +82,7 @@ void MDIA_start_service(uint8_t npeers){
 void MDIA_run_synchonize(){
 	/*this function send the synchonization signal to all the peer devices*/
 	/**/
-		CTRL_sync();
+		//CTRL_sync();
 		if(mdia_mode == DYNAMIC_CONTROL)
 		PTP_SYNC();
 }
@@ -124,7 +124,7 @@ void MDIA_get_sync_parameters(media_ctrl_parameters * tmp_sync_parm)
 void MDIA_server_main(){
 	Ctrl_Sync_server_main();
 if(mdia_mode == DYNAMIC_CONTROL)	
-	ptp_server_sync_process();
+	ptp_server_sync_process_temp_new();
 }
 
 
@@ -173,9 +173,9 @@ void MDIA_eable_periodic_sync()
 	PTP_SYNC_enable_periodic_sync();
 }
 
-void Media_cinterval_IRQ_Handler (void){
-  if(mdia_mode == DYNAMIC_CONTROL) PTP_cinterval_IRQ_Handler();
-  Ctrl_Sync_cinterval_IRQ_handler();
+void Media_cinterval_IRQ_Handler (uint8_t connection_id){
+  if(mdia_mode == DYNAMIC_CONTROL) PTP_cinterval_IRQ_Handler_idx(connection_id);
+  Ctrl_Sync_cinterval_IRQ_handler(connection_id);
 }
   
 

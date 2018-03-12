@@ -67,7 +67,8 @@ void MDIA_set_periodic_sync(uint32_t period);
 void MDIA_dable_periodic_sync(void);
 void MDIA_eable_periodic_sync(void);
 void MDIA_server_main(void);
-void Media_cinterval_IRQ_Handler (void);
+void Media_cinterval_IRQ_Handler (uint8_t connection_id);
+void MDIA_run_synchonize();
 /*no yet_implemented*/
 void MDIA_get_media_sync_config(void);
 void MDIA_dsble_service(void);

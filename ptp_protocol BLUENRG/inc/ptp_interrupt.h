@@ -4,10 +4,25 @@
 #include "stm32f4xx_hal.h"
 #include "stm32f4xx_hal_tim.h"
 #include "stm32f4xx_hal_tim_ex.h"
+#include "media_service.h"
 #include "ptp_core.h"
 #include "clock.h"
 #include "debug.h"
 #include "media_sync_server.h"
+
+
+
+typedef enum{
+  UNITIALIZED,
+  WAIT_SEC_TIME,
+  COMPLETED
+}disc_status;
+
+struct Dscover_Cinterval{
+  tClockTime time1;
+  tClockTime time2;
+  disc_status status;
+};
 
 
 /** @defgroup STM32_Connection interval_interupt_Constants 
@@ -51,6 +66,7 @@ void BlueNRG_ConnInterval_Init(uint32_t ConnInterval_ms);
 void BlueNRG_ConnInt_Tick(void);
 void BlueNRG_ConnInterval_IRQ_Callback(void);
 void BlueNRG_ConnInterval_IRQ_enable(void);
+void PTP_NEW_SYNC_RESULT_SW_IRQHandler();
 
 
 /********PTP-to-CTRL-func********************/

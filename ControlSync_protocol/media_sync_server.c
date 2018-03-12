@@ -124,6 +124,7 @@ ctrl_status_table * CTRL_get_control_table(void)
 
 
 
+
 /**
   * @brief  Ctrl_set_op_mode This function initializes the control synchronization protocol.
   * @param  app_profile_t * profile : profile to associate the service.
@@ -296,7 +297,7 @@ if(NET_get_device_role() == DEVICE_CENTRAL)
             CTRL_enable_notify(CTRL_SYNC_STR[i].connect_id);
             CTRL_SYNC_STR[i].notify_enable=TRUE; /*fixme: remove this variable for the controller is not really needed*/
             CTRL_SYNC_STR[i].pending_pack_type = INITIATOR;
-            CTRL_SYNC_STR[i].pending_pack = TRUE;
+            CTRL_SYNC_STR[i].pending_pack = 0;
       }
  }else if(NET_get_device_role() == DEVICE_PERISPHERAL){
      
@@ -818,8 +819,12 @@ static void Ctrl_Sync_error_handler(void)
   * @retval : none.
   */
 volatile uint8_t ctrl_sync_id =0;
-void Ctrl_Sync_cinterval_IRQ_handler(void){
+void Ctrl_Sync_cinterval_IRQ_handler(uint8_t connection_id){
 
+  uint8_t index= connection_id;
+  Ctrl_Sync_send_pending_packets(&CTRL_SYNC_STR[index],index);
+  
+  /*
   if(network_get_status())
   {
     switch (ctrl_sync_id){
@@ -838,7 +843,7 @@ void Ctrl_Sync_cinterval_IRQ_handler(void){
               
     }
   }
-  
+*/  
 }
 
 /**
@@ -890,6 +895,32 @@ void CTRL_sync_send_sp_pk(uint8_t PK_type)
       ptr->pending_pack=TRUE;
       ptr++;
     }
+}
+
+
+/**
+  * @brief UPDATE_SYNC_IRQ: 
+  *This function us used to update the SYNC_parametes as soon the PTP process is completed.
+  * @parm: none
+  * @retval : none.
+  */
+void UPDATE_SYNC_IRQ(){
+  uint8_t i;
+  uint16_t tmp_delay_diff;
+  ptp_status_table * tmp_ptp_tbl;
+  static ctrl_status_entry * tmp_ctrl_entry;
+  
+  tmp_ptp_tbl = PTP_GET_status_tbl();
+  
+  tmp_delay_diff = (uint16_t)(tmp_ptp_tbl[num_peer_device-1].timers.t0 - tmp_ptp_tbl[0].timers.t0);
+  
+  
+  for (i=0;i <num_peer_device;i++ ){
+    tmp_ctrl_entry = ctrl_get_status_entry (tmp_ptp_tbl->Chandler);
+    tmp_ctrl_entry->sync_param.tx_delay = (uint32_t)(tmp_ptp_tbl->timers.t2 - tmp_ptp_tbl->timers.t1);
+    tmp_ctrl_entry->sync_param.slave_max_delay_diff = tmp_delay_diff * (tmp_ctrl_entry->total_peers - tmp_ctrl_entry->seq_id -1);
+    tmp_ctrl_entry->pending_pack=TRUE;
+  }
 }
 
 

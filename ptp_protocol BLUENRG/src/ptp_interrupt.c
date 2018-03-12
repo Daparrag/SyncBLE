@@ -11,6 +11,12 @@
 
 
 static void _Error_Handler();
+static void BlueNRG_Discovery_connection();
+static void BlueNRG_Discovery_connection_set_next_status(disc_status status);
+static struct Dscover_Cinterval dcvr_intv = {0,0,UNITIALIZED};
+
+
+
 
 
 /******************************************************************************/
@@ -29,8 +35,8 @@ static void _Error_Handler();
 
 volatile uint8_t BlueNRG_ConnIntervalValid = 0;
 volatile uint8_t BlueNRG_ConnInterval_count = 0;
-
 volatile uint8_t pending_sync_transmission =0;
+volatile uint8_t connection_id=0;
 
 
 /**
@@ -86,8 +92,13 @@ void BlueNRG_ConnInterval_IRQ_Callback(void)
   HAL_NVIC_DisableIRQ(BNRG_CONN_INTERV_EXTI_IRQn);
   __HAL_GPIO_EXTI_CLEAR_IT(BNRG_CONN_INTERV_IRQ_PIN);
   HAL_NVIC_ClearPendingIRQ(BNRG_CONN_INTERV_EXTI_IRQn);
-  //PTP_cinterval_IRQ_Handler();
-  Ctrl_Sync_cinterval_IRQ_handler();
+  if(dcvr_intv.status==COMPLETED){
+    connection_id= !connection_id;
+    Media_cinterval_IRQ_Handler(connection_id);
+  }else{
+    BlueNRG_Discovery_connection();
+  }
+  
   //BlueNRG_ConnInterval_Handler();
 }
 
@@ -96,6 +107,49 @@ void BlueNRG_ConnInterval_IRQ_enable (void)
 {
   HAL_NVIC_EnableIRQ(BNRG_CONN_INTERV_EXTI_IRQn);
   HAL_NVIC_SetPriority((IRQn_Type) BNRG_CONN_INTERV_EXTI_IRQn, BNRG_CONN_INTERV_EXTI_PRIORITY, 0);          
+
+}
+
+
+void BlueNRG_Discovery_connection_set_next_status(disc_status input_status)
+{
+  dcvr_intv.status=input_status;
+}
+
+
+void BlueNRG_Discovery_connection(){
+
+  switch (dcvr_intv.status){
+    
+    case UNITIALIZED:
+      {
+        dcvr_intv.time1 = clock_time();
+        BlueNRG_Discovery_connection_set_next_status(WAIT_SEC_TIME);
+      }
+      break;
+      
+    case WAIT_SEC_TIME:
+      {
+        dcvr_intv.time2 = clock_time();
+        {
+          if((dcvr_intv.time2 - dcvr_intv.time1) - ((uint32_t)EXPECTED_DELAY) <=5){
+            connection_id=1;
+              
+          }else{
+            connection_id=0;
+            //BlueNRG_Discovery_connection_set_next_status(UNITIALIZED);    
+          }
+           BlueNRG_Discovery_connection_set_next_status(COMPLETED); 
+              
+        }
+      }
+      break;      
+    default:
+    break;
+  }
+  
+
+
 
 }
 
@@ -268,11 +322,16 @@ void ptp_update_interrupt(uint32_t period, uint32_t TickPriority)
 
 
 void TIM2_IRQHandler(void){  
+  PTP_SYNC_IRQ_Handler();
   CTRL_sync_IRQ_Handler();
   HAL_TIM_IRQHandler(&TimHandle);
 }  
 
 
+void PTP_NEW_SYNC_RESULT_SW_IRQHandler(){
+HAL_GPIO_EXTI_IRQHandler(PTP_NEW_SYNC_RESULT_SW_IRQ_PIN);
+UPDATE_SYNC_IRQ();
+}
 
 /**
   * @brief  ptp_to_ctrl_init 

@@ -316,10 +316,18 @@ void CTRL_sync_send_sp_pk(uint8_t PK_type);
   * @brief  This function deals to the connection interval Iterruption.
   * @retval : none.
   */
-void Ctrl_Sync_cinterval_IRQ_handler(void);
+void Ctrl_Sync_cinterval_IRQ_handler(uint8_t connection_id);
 
 
 void CTRL_sync_IRQ_Handler(void);
+
+
+
+/**
+  * @brief  This function deals with the updating parameters of the control sync protocol.
+  * @retval : none.
+  */
+void UPDATE_SYNC_IRQ(void);
 
 
 
