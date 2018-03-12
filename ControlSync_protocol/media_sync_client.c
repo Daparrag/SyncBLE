@@ -75,6 +75,7 @@
 #include "ptp_interrupt.h"
 #include "stm32f4xx_nucleo_add_led.h"
 #include "media_sync_client.h"
+#include "media_interrupt.h"
 
 /**********Control service UUID specification********/
 static const uint8_t sync_control_service_uuid[16] = { 0x66, 0x9a, 0x0c,
@@ -96,7 +97,7 @@ static uint8_t num_peer_device;                          /*store the number of p
 static ctrl_status_table CTRL_SYNC_STR[EXPECTED_NODES]; /*synchonization control table*/
 
 volatile uint8_t Cinterval_CTRL_Started = 0;
-
+static ctrl_mode ctrol_op_mode = CTRL_STATIC_MODE; 
 
 /**********************Static Func Def*************************/
 static void Ctrl_Sync_error_handler(void);
@@ -148,6 +149,17 @@ void Ctrl_Sync_init(app_profile_t * profile)
 
 
 /**
+  * @brief  Ctrl_set_op_mode This function initializes the control synchronization protocol.
+  * @param  app_profile_t * profile : profile to associate the service.
+  * @retval : none.
+  */
+
+void Ctrl_set_op_mode(ctrl_mode op_mode){
+    ctrol_op_mode = op_mode;
+}
+
+
+/**
   * @brief  This function process the input packets arriving form the BLE interface.
   * @param uint16_t chandler : connection handler associated ;
   *   @param ctrl_report_src_packet * src_report: src report data-structure
@@ -190,7 +202,16 @@ void Ctrl_input_packet_process(uint16_t chandler,
                   ret += parse_ctrl_init_packet(att_data+ret, data_length-ret, &init_pack);
                   if (ret!=CTRL_INIT_PCK_SIZE)Ctrl_Sync_error_handler(); /*something is worng*/
                   process_init_packet(&init_pack,chandler);
-
+#ifdef DEBUG_MDA
+                  if(CTRL_SYNC_STR[0].sync_param.slave_max_delay_diff==0)
+                  {
+                    BSP_ADD_LED_On(ADD_LED2);        
+                    BSP_ADD_LED_Off(ADD_LED2);
+                  }else{
+                  uint32_t period =  (CTRL_SYNC_STR[0].sync_param.slave_max_delay_diff*1000)+500;
+                  MDA_update_interrupt(period,0);
+                  }                    
+#endif                   
            }else if (ctrl_hdr.pkt_type == REPORT_SRC){
              /*process report_source_ctrl_packet*/
 
@@ -790,8 +811,12 @@ static void Ctrl_Sync_error_handler(void)
   * @retval : none.
   */
 volatile uint8_t ctrl_sync_id =0;
-void Ctrl_Sync_cinterval_IRQ_handler(void){
+void Ctrl_Sync_cinterval_IRQ_handler(uint8_t connection_id){
 
+  uint8_t index= connection_id;
+  Ctrl_Sync_send_pending_packets(&CTRL_SYNC_STR[index],index);
+  
+  /*
   if(network_get_status())
   {
     switch (ctrl_sync_id){
@@ -810,9 +835,8 @@ void Ctrl_Sync_cinterval_IRQ_handler(void){
               
     }
   }
-  
+*/  
 }
-
 void CTRL_sync_IRQ_Handler(){
     if(!Cinterval_CTRL_Started){
       Cinterval_CTRL_Started=1;

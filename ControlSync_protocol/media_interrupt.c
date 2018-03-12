@@ -2,6 +2,13 @@
 
 #include "media_interrupt.h"
 
+#ifdef DEBUG_MDA
+#include "stm32f4xx_nucleo_add_led.h"
+#endif
+
+
+
+
 
 /******************************************************************************/
 /*
@@ -50,7 +57,7 @@ TIM_ClockConfigTypeDef sClockSourceConfig;
   //HAL_RCC_GetClockConfig(&clkconfig,&pFLatency);
   uwTimclock = 1 * HAL_RCC_GetPCLK2Freq(); /*Timer_Clocks*/
   uwPrescalerValue = (uint32_t) ((uwTimclock/1000000)-1);/*now the prescale counter clock is equal to 1Mhz*/
-  mperiod = period * ((1000000/1000)-1); /*period in ms*/
+  mperiod = period * (1); /*period in us*/
   
   /* Initialize TIM3 */
   TimHandle_service.Instance = TIM3;
@@ -144,12 +151,19 @@ void MDA_update_interrupt(uint32_t period, uint32_t TickPriority)
 	HAL_NVIC_DisableIRQ(TIM3_IRQn);
 
 	MDA_interrupt_init(period, TickPriority);
-
+        
+#ifdef DEBUG_MDA
+BSP_ADD_LED_On(ADD_LED2);        
+#endif
 }
 
 
 
 void TIM3_IRQHandler(void){
-(*presentation_func)();  
+#ifdef DEBUG_MDA
+BSP_ADD_LED_Off(ADD_LED2);  
+#else
+(*presentation_func)();    
+#endif  
 HAL_TIM_IRQHandler(&TimHandle_service);
 }  
