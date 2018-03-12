@@ -66,7 +66,9 @@ typedef struct{
   uint8_t  sequence_id; /*1 byte P[1]*/
   uint8_t  msg_sync_interval; /*P[2] 1byte*/
   uint16_t source_id; /*5  p[3] & P[8] unique connnection handler*/
-}ptp_hdr;/*total 8bytes*/
+}ptp_hdr;/*total 5bytes*/
+#define PTP_HEADER_SIZE   5
+
 
 /*ptp packet definition*/
 typedef struct{
@@ -75,6 +77,24 @@ typedef struct{
 }ptp_packet;
 
 /****************Functions*************************/	
+
+
+/**
+  * @brief init_ptp_profile: This function associate the ptp service to 
+  * a profile
+  * @param app_profile_t * profile: profile datastructure.
+  * @
+  */
+void init_ptp_profile(app_profile_t * profile);
+
+/**
+  * @brief init_ptp_profile: This function initialize the ptp service structures 
+  * and promitives. 
+  * @param uint8_t no_peers: Number of devices associated to this service.
+  * @
+  */
+void ptp_Start(uint8_t no_peers); /*initialize the ptp protocol*/
+
 
 void Init_ptp_application(uint8_t ptp_dv_role, app_profile_t * profile);
 void set_connection_clients(uint8_t conn_entries);
@@ -90,6 +110,18 @@ void PTP_SYNC_desable_periodic_sync(void);
 void PTP_SYNC_update_periodic_sync(uint32_t period);
 void PTP_SYNC_switch_off_periodic_sync(void);
 void PTP_SYNC_IRQ_Handler();
+ptp_status_table * PTP_GET_status_tbl();
+void PTP_cinterval_IRQ_Handler_idx(uint32_t idx);
+
+
+/****Functions between PTP_SYNC and CTRL_SYNC*****/
+
+/**
+  * @brief PTP_Update_CTRL_Parameters_Callback: 
+  * the synchonization Parameters at the Control Services.   
+  * @return : none
+  */
+void PTP_Update_CTRL_Parameters_Callback(void);
 
 
 #endif /*end PTP_CORE*/

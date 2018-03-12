@@ -70,7 +70,7 @@ typedef struct
 
 
 /** 
-* @brief ptp aprox packet structures.
+* @brief PTP aprox packet structures.
 */
 typedef struct{
 	uint8_t  ptp_type; /*4 bites*/
@@ -79,7 +79,7 @@ typedef struct{
 	uint8_t  control_field; /*2 bit p[0]*/ 
 	uint8_t  sequence_id; /*1 byte P[1]*/
 	uint8_t  msg_sync_interval; /*P[2] 1byte*/
-	uint16_t source_id;	/*5  p[3] & P[8] unique connnection handler*/
+	uint16_t source_id;	/*5  p[3] & P[8] unique connection handler*/
 }ptp_hdr;/*total 8bytes*/
 
 typedef struct{

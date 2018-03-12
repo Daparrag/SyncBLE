@@ -61,7 +61,7 @@
 #endif
 
 #define PRINT_PTP 1
-#define Cinterval 1
+#define Cinterval 0
 
 
 #ifndef COPY_VAR
@@ -84,7 +84,10 @@ static ptp_status_table PTPStatus [EXPECTED_CENTRAL_NODES]/*form the slaves*/
 static app_service_t bleptp_service;
 static app_attr_t bleptp_tx_att;
 static app_attr_t bleptp_rx_att;
+
+static uint8_t count=0;
 /**************************Service ID's*************************/
+
 static const uint8_t ptp_service_uuid[16] = { 0x66, 0x9a, 0x0c,
 		0x20, 0x00, 0x08, 0x96, 0x9e, 0xe2, 0x11, 0x9e, 0xb1, 0xf0, 0xf2, 0x73,
 		0xd9 };
@@ -100,7 +103,6 @@ static uint8_t ptp_packet_hdr_parse (uint8_t * data, uint8_t data_len, ptp_hdr *
 static uint8_t create_ptp_packet_hdr(uint16_t chndler,uint8_t type, ptp_hdr * hdr,uint8_t *buff);
 static uint8_t get_control_field(uint8_t type);
 static uint8_t get_sequence_id( uint8_t type,uint16_t chndler);
-static void init_ptp_profile(app_profile_t * profile);
 static void input_packet_process( uint16_t chandler, 
                                   uint16_t attrhandler, 
                                   uint8_t data_length, 
@@ -119,6 +121,16 @@ static void send_Cinterval_pkt_server(ptp_status_table * st_sync_node);
 
 
 
+
+
+/**
+* @brief  clean_buffer: clean the TX buffer .
+  * @param uint8_t * buff : pointer to a buffer structure.
+  * @param uint8_t length: size of the buffer.
+  * param tClockTime * time_cpy> clock to send
+  * @retval none
+  */
+
 static void clean_buffer(uint8_t * buff, uint8_t length)
 {
   uint8_t i;
@@ -129,15 +141,13 @@ static void clean_buffer(uint8_t * buff, uint8_t length)
 
 
 /**
-* @brief  ptp_enable_notify: send a ptp packet .
-  * @param uint16_t connHandler: the connection handler associated.
-  * @param uint8_t pkt_type: Packet Type.
-  * param tClockTime * time_cpy> clock to send
-  * @retval 1 if success
+* @brief  clear_flags: Clean the time_synchronization Control Variables.
+  * param none
+  * @retval void.
   */
 
 
-void clear_flags()
+static void clear_flags()
 {
   uint8_t i;
   for(i=0; i < max_number_entries; i++){
@@ -147,16 +157,34 @@ void clear_flags()
   }
   for(i=0; i < max_number_entries; i++){
     PTPStatus[i].ptp_state = PTP_FORWARD;
-    //if(PTPStatus[i].local_notify_enable_flag)PTPStatus[i].local_notify_enable_flag=ptp_disable_notify(PTPStatus[i].Chandler);
   }
-   
+  count=0;
   //printf("---------------------------------sync_success--------------------\n");
   sync_success=TRUE; 
+  HAL_NVIC_SetPendingIRQ(PTP_NEW_SYNC_RESULT_SW_IRQn);
  /* enable_test_fun();*/
   
-
 }
 
+
+
+
+/**
+* @brief  PTP_GET_status_tbl: This function returns the respective PTP_status_table.
+  * @retval ptp_status_table * : Current PTP_status TBL.
+  */
+
+ptp_status_table * PTP_GET_status_tbl(){
+    return PTPStatus;
+}
+
+
+/**
+* @brief  ptp_send_ptp_packet: This function Sends the respective PTP message to peer device.
+  * @param uint16_t chandler: The connection handler associated to a peer device.
+  * @param uint8_t pkt_type : The type of PTP packet.
+  * @retval tClockTime * : Pointer to the peer clock structure.
+  */
 
 uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time_cpy){
   tBleStatus res_ble;
@@ -204,8 +232,6 @@ uint8_t ptp_send_ptp_packet(uint16_t chandler,uint8_t pkt_type,tClockTime * time
   * @retval 1 if success
   */
 
-
-
 uint8_t ptp_enable_notify(uint16_t chandler){
   uint8_t notify_enable_data [] = {0x01,0x00};
   struct timer t;
@@ -239,15 +265,8 @@ return 1;
 
 
 
-
-
-
-
-
-
-
 /**
-  * @brief  This function return the PTP_STATUS for a specific connection.
+  * @brief  get_status_table: This function return the PTP control table for a specific connection.
   * @param uint16_t connHandler: the connection handler associated.
   * @
   */
@@ -269,7 +288,7 @@ ptp_status_table * get_status_table(uint16_t Chandler){
 
 
 /**
-  * @brief  This function is able to parce the input ptp_packet.
+  * @brief  This function is able to parse the input ptp_packet.
   * @param uint8_t * data: packet itput.
   *	@param uint8_t data_len size of the packet.
   *	@param ptp_hdr * hdr : ptp_header structure 
@@ -286,7 +305,7 @@ uint8_t * p;
 
 	p=data;
 
-	hdr->ptp_type =   (p[0] & 0xF);
+		hdr->ptp_type =   (p[0] & 0xF);
         hdr->ptp_version= (p[0] >> 0x3) & 0x1;
         hdr->domain_number  = (p[0] >> 0x4) & 0x1;
         hdr->control_field = (p[0]>>0x5)& 0x1;
@@ -294,7 +313,7 @@ uint8_t * p;
         hdr->msg_sync_interval = p[2];
         hdr->source_id = p[3] | ((uint16_t) p[4] << 0x8);
         
-return 5;
+return PTP_HEADER_SIZE;
 }
 
 
@@ -331,7 +350,7 @@ uint8_t create_ptp_packet_hdr(uint16_t chndler,uint8_t type, ptp_hdr * hdr,uint8
 
 	p[4] = ((hdr->source_id >> 0x08)) & 0xFF; 
 
-        return 5; 		
+        return PTP_HEADER_SIZE; 		
 }
 
 
@@ -341,8 +360,7 @@ uint8_t create_ptp_packet_hdr(uint16_t chndler,uint8_t type, ptp_hdr * hdr,uint8
   * @retval : packet control field value.
   */
 
-
-uint8_t get_control_field(uint8_t type)
+static uint8_t get_control_field(uint8_t type)
 {
   uint8_t cfield=0;
   
@@ -365,7 +383,7 @@ uint8_t get_control_field(uint8_t type)
   */
 
 
-uint8_t get_sequence_id( uint8_t type,uint16_t chndler){
+static uint8_t get_sequence_id( uint8_t type,uint16_t chndler){
   
   ptp_status_table * st =  get_status_table(chndler);
   uint8_t rseq_number;
@@ -384,7 +402,6 @@ uint8_t get_sequence_id( uint8_t type,uint16_t chndler){
   *	@param ptp_clock_st * tm: ptp_ clock values.
   * @retval : void.
   */
-
 
 static void ptp_update_clock(ptp_clock_st * tm){
  
@@ -506,13 +523,13 @@ BSP_ADD_LED_Off(ADD_LED2);
   * @param profile datastructure.
   * @
   */
-static void init_ptp_profile(app_profile_t * profile){
+void init_ptp_profile(app_profile_t * profile){
   APP_Status ret; 
 /*create the ptp_service */
   COPY_VAR(bleptp_service.ServiceUUID,ptp_service_uuid);
   bleptp_service.service_uuid_type=UUID_TYPE_128;
   bleptp_service.service_type=PRIMARY_SERVICE;
-  bleptp_service.max_attr_records=7;
+  bleptp_service.max_attr_records=8;
   /*copy the and associate the service to the BLE application profile*/
   ret = APP_add_BLE_Service(profile,&bleptp_service);
   
@@ -520,7 +537,7 @@ static void init_ptp_profile(app_profile_t * profile){
   /*create the ptp_TX_attribute*/
   COPY_VAR(bleptp_tx_att.CharUUID,ptp_TXchar_uuid);
   bleptp_tx_att.charUuidType = UUID_TYPE_128;
-  bleptp_tx_att.charValueLen = 20;
+  bleptp_tx_att.charValueLen = 13;
   bleptp_tx_att.charProperties = CHAR_PROP_NOTIFY;
   bleptp_tx_att.secPermissions = ATTR_PERMISSION_NONE;
   bleptp_tx_att.gattEvtMask = GATT_DONT_NOTIFY_EVENTS;
@@ -532,7 +549,7 @@ static void init_ptp_profile(app_profile_t * profile){
   /*create the ptp_RX_attribute*/
    COPY_VAR(bleptp_rx_att.CharUUID,ptp_RXchar_uuid);
   bleptp_rx_att.charUuidType = UUID_TYPE_128;
-  bleptp_rx_att.charValueLen = 20;
+  bleptp_rx_att.charValueLen = 13;
   bleptp_rx_att.charProperties = CHAR_PROP_WRITE | CHAR_PROP_WRITE_WITHOUT_RESP;
   bleptp_rx_att.secPermissions = ATTR_PERMISSION_NONE;
   bleptp_rx_att.gattEvtMask = GATT_NOTIFY_ATTRIBUTE_WRITE;
@@ -541,6 +558,34 @@ static void init_ptp_profile(app_profile_t * profile){
   /*copy and associate the RX_attribute to a service*/
   ret= APP_add_BLE_attr(&bleptp_service,&bleptp_rx_att); 
     if(ret!=APP_SUCCESS)ptp_error_handler();
+}
+
+void ptp_Start(uint8_t no_peers)
+{
+  max_number_entries =  no_peers;
+  uint8_t i;
+  ptp_status_table * ptr = PTPStatus;
+    
+ /*initialize the ptp_protocol_status and variables*/
+clock_reset();  
+
+  for (i=0; i<no_peers; i++ ){
+      ptr->Chandler =  NET_get_chandler_by_index (i);
+      ptr->node_id= i+1;
+      ptr->ptp_state = PTP_INIT;
+      ptr->seq_number=0;
+      ptr->pending_tx=0;  
+      ptr++;
+  } 
+ // if(NET_get_device_role() == DEVICE_CENTRAL) 
+ /*init the virtual Clock*/ 
+  #if defined (TEST_PTP_SERVICE) 
+  BlueNRG_ConnInterval_Init(10); /*this must be define by the top API*/
+  #endif
+  
+  
+   clock_Init();
+   sync_success=TRUE;
 }
 
 /**
@@ -561,11 +606,11 @@ void Init_ptp_application(uint8_t ptp_dv_role, app_profile_t * profile){
 	/*for each spected connection initialize the status connection*/
 
 /*for each spected connection initialize the status connection*/
-#if (ROLE == GAP_CENTRAL_ROLE)
+        if (NET_get_device_role() == DEVICE_CENTRAL){
 	expected_nodes = EXPECTED_NODES;
-#elif(ROLE==GAP_PERIPHERAL_ROLE)
-	expected_nodes = EXPECTED_CENTRAL_NODES
-#endif
+        }else if(NET_get_device_role() == DEVICE_PERISPHERAL){
+	expected_nodes = EXPECTED_CENTRAL_NODES;
+        }
 
 /*initialize the ptp_protocol_status and variables*/
 clock_reset();
@@ -642,46 +687,68 @@ void ptp_server_sync_process(){
            									 );
                 }  
         
-                
-               // for(i=0; i <max_number_entries; i++ )send_Cinterval_pkt_server(&PTPStatus[i]);
-                //if(PTPStatus[0].ptp_state != PTP_SYNCH){
-                //    synchronization_process(&PTPStatus[0]);
-                //}else if(PTPStatus[1].ptp_state != PTP_SYNCH){
-                //   synchronization_process(&PTPStatus[1]);  
-                //}else{
-                //  
-                //}    
-             	//clear_flags();	
-
       }
 
 }
 
+void ptp_server_sync_process_temp_new(){
+    
+  if (sync_success != TRUE){
+		/*the ptp_server device needs to resynchronize*/
+		event_t * event;
+  		event = (event_t *)HCI_Get_Event_CB();
 
+  		if(event!=NULL && event->event_type== EVT_BLUE_GATT_NOTIFICATION){
+  			/*get the events associated to ptp protocol*/
+
+  			evt_gatt_attr_notification *evt = (evt_gatt_attr_notification*)event->evt_data;
+           			input_packet_process  (evt->conn_handle,
+           									 evt->attr_handle,
+           									 evt->event_data_length,
+           									 evt->attr_value,
+           									 event->ISR_timestamp
+           									 );
+                }  
+        
+      }
+}
+
+/**
+  * @brief  set_connection_clients: associate a Chandler to and specific entry in the PTP_CTRL_TABLE.
+  * @param uint8_t conn_entries: contain the number of devices connected as a clients.   
+  * @return : none
+  */
 void set_connection_clients(uint8_t conn_entries)
 {
   uint8_t i;
   max_number_entries = conn_entries;
   for (i=0; i < conn_entries; i++)
   {
-      PTPStatus[i].Chandler = NET_get_connection_handler(i);
+      PTPStatus[i].Chandler = NET_get_chandler_by_index(i);
   }
 }
 
 
-
+/**
+  * @brief  set_connection_servers: associate a Chandler to and specific entry in the PTP_CTRL_TABLE.
+  * @param uint8_t conn_entries: contain the number of devices connected as a server.   
+  * @return : none
+  */
 void set_connection_servers(uint8_t serv_conn_entries)
 {
    uint8_t i;
    max_number_entries = serv_conn_entries;
-   for (i=0; i < conn_entries; i++)
+   for (i=0; i < serv_conn_entries; i++)
    {
-      PTPStatus[i].Chandler = NET_get_connection_handler(i);
+      PTPStatus[i].Chandler = NET_get_chandler_by_index(i);
    }
     
 }
 
-
+/**
+  * @brief  ptp_client_sync_process: This is the main PTP process for a devices acting as client.
+  * @return : none
+  */
 void ptp_client_sync_process(){
 event_t * event;
 event = (event_t *)HCI_Get_Event_CB();
@@ -721,6 +788,12 @@ event = (event_t *)HCI_Get_Event_CB();
 
 
 
+/**
+  * @brief  send_Cinterval_pkt_client: This fuction handler properly the ptp packet transmission 
+  *									   using the connection interval in devices acting as clients.
+  * @param	ptp_status_table * : pointer to the PTP Synchonization table.
+  * @return : none
+  */
 
 void send_Cinterval_pkt_client(ptp_status_table * st_sync_node){
 uint8_t ret;
@@ -737,7 +810,12 @@ uint8_t ret;
 
 
 
-
+/**
+  * @brief  send_Cinterval_pkt_server: This fuction handler properly the ptp packet transmission 
+  *									   using the connection interval in devices acting as servers.
+  * @param	ptp_status_table * : pointer to the PTP Synchonization table.
+  * @return : none
+  */
 void send_Cinterval_pkt_server(ptp_status_table * st_sync_node){
 uint8_t ret;
   if(sync_success!=1){
@@ -789,9 +867,11 @@ BSP_ADD_LED_On(ADD_LED2);
 BSP_ADD_LED_Off(ADD_LED2);
 #endif            
            st_sync_node->ptp_state = PTP_SYNCH;
+           count+=1;
+           
 
 #if PRINT_PTP                                                  
-          //printf( " ID: %d TIME: %d Delay: %d \n", st_sync_node->node_id ,clock_time() , ((st_sync_node->timers.t1 - st_sync_node->timers.t0)+(st_sync_node->timers.t2 - st_sync_node->timers.t3))/2);
+          
 #endif
 
         }
@@ -810,7 +890,7 @@ BSP_ADD_LED_Off(ADD_LED2);
 
 
 /**
-  * @brief  This function forward the corresponding sync-follow msg to the slaves.
+  * @brief  synchronization_process: This function forward the corresponding sync-follow msg to the slaves.
   * @param uint8_t ptp_status_table * st_sync_node : Control Structure For each_Node; 
   * will be (the master: who has the reference clock) or
   * (the slave: who synchonize its clock to a master reference clock).
@@ -859,7 +939,7 @@ BSP_ADD_LED_Off(ADD_LED2);
 				if(Timer_Expired(&(st_sync_node->packet_alive)))
                                 {
                                   
-                                    //if(st_sync_node->local_notify_enable_flag)st_sync_node->local_notify_enable_flag=ptp_disable_notify(st_sync_node->Chandler);
+                                    
                                     st_sync_node->ptp_state=PTP_FORWARD;
                                     sync_success=FALSE;
                                 }
@@ -876,6 +956,34 @@ BSP_ADD_LED_Off(ADD_LED2);
 
 volatile uint8_t sync_id = 0;
 
+
+/**
+  * @brief  PTP_cinterval_IRQ_Handler 
+  * This function handler the corresponding C-interval to a corresponding idx
+  * @param uint32_t idx: connection interval index
+  * @return: none.
+  */
+void PTP_cinterval_IRQ_Handler_idx(uint32_t idx)
+{
+
+#if Cinterval
+BSP_ADD_LED_On(ADD_LED4);
+BSP_ADD_LED_Off(ADD_LED4);
+#endif   
+  
+  send_Cinterval_pkt_server(&PTPStatus[idx]); 
+  if(count==2){
+  clear_flags();
+  }
+  
+}
+
+
+/**
+  * @brief  PTP_cinterval_IRQ_Handler This function handler the corresponding C-interval
+  *	Interruption to forward the corresponding PTP messages
+  * @return: none.
+  */
 void PTP_cinterval_IRQ_Handler(void)
 {
   
@@ -910,46 +1018,31 @@ send_Cinterval_pkt_server(&PTPStatus[1]);
     } 
     
     
-    
-/*    if (sync_id == 0){
-    
-    send_Cinterval_pkt_server(&PTPStatus[0]);
-    sync_id=1;
-    
-    }else if(sync_id == 1) {
-#if Cinterval
-BSP_ADD_LED_On(ADD_LED4);
-BSP_ADD_LED_Off(ADD_LED4);
-#endif          
-      send_Cinterval_pkt_server(&PTPStatus[1]);
-      sync_id=0;
-          clear_flags();
-    }
-    //
-    //for(i=0; i <max_number_entries; i++ )
-    //{
-    //  send_Cinterval_pkt_server(&PTPStatus[i]);
-    //}
-  
-*/
  } 
 }
 
 
 
 
-
+/**
+  * @brief  PTP_SYNC enable the control synchonization protocol
+  *	Interruption to forward the corresponding PTP messages
+  * @return: none.
+  */
 void PTP_SYNC (void){
 sync_success=FALSE;
-BlueNRG_ConnInterval_IRQ_enable();
+#if defined(TEST_PTP_SERVICE)
+//BlueNRG_ConnInterval_IRQ_enable();
+#endif
 }
 
 
 
 /**
-  * @brief  This function set up a periodic Interruption to run the synchronization periodically.
+  * @brief  PTP_SYNC_set_periodic_sync: This function initialize a periodic Interruption 
+  										to run the synchronization periodically.
   * @param  uint16_t period: Synchronization Period (ms).
-  * @
+  * @ return: none
   */
 
 void PTP_SYNC_set_periodic_sync(uint32_t period){
@@ -957,9 +1050,8 @@ void PTP_SYNC_set_periodic_sync(uint32_t period){
 }
 
 /**
-  * @brief PTP_SYNC_enable_periodic_sync:
-  * This function enable the periodic synchronization interruption.
-  * @
+  * @brief PTP_SYNC_enable_periodic_sync: This function enable a periodic synchronization interruption.
+  * @ return: none
   */
 
 void PTP_SYNC_enable_periodic_sync(void){
@@ -969,7 +1061,7 @@ void PTP_SYNC_enable_periodic_sync(void){
 /**
   * @brief PTP_SYNC_desable_periodic_sync:
   * This function disable the periodic synchronization interruption.
-  * @
+  * @ return : none
   */
 void PTP_SYNC_desable_periodic_sync(void){
 	ptp_interrupt_suspend();
@@ -979,14 +1071,16 @@ void PTP_SYNC_desable_periodic_sync(void){
   * @brief PTP_SYNC_update_periodic_sync:
   * This function  update the synchronization period.
   * @param uint32_t period: synchronization period
+  * @return : none
   */
 void PTP_SYNC_update_periodic_sync(uint32_t period){
 	ptp_update_interrupt(period,6);
 }
 
 /**
-  * @brief PTP_SYNC_update_periodic_sync:
-  * This function  deinit the Sync interruption.
+  * @brief PTP_SYNC_switch_off_periodic_sync: 
+  *	This function  deinit the Sync interruption.
+  * @return : none
   */
 
 void PTP_SYNC_switch_off_periodic_sync(void){
@@ -995,24 +1089,36 @@ void PTP_SYNC_switch_off_periodic_sync(void){
 
 
 /**
-  * @brief PTP_SYNC_update_periodic_sync:
+  * @brief PTP_SYNC_IRQ_Handler:
   * This function  is called each time the SYNC interruption is raised.
+  * @return : none
   */
-
-
 
 void PTP_SYNC_IRQ_Handler(){
 	sync_success=FALSE;
         if(!Cinterval_started){
-        Cinterval_started = 1;  
+        Cinterval_started = 1;
+#if defined(TEST_PTP_SERVICE)                          
         BlueNRG_ConnInterval_IRQ_enable();
-        }
+#endif
+      }        
+}
+
+/**
+  * @brief PTP_Update_CTRL_Parameters_Callback: 
+  * the synchonization Parameters at the Control Services.   
+  * @return : none
+  */
+void PTP_Update_CTRL_Parameters_Callback(void){
+  /**/
 }
 
 
 
-
-
+/**
+  * @brief ptp_error_handler:
+  * This function  used as a error handler.
+  */
 static void ptp_error_handler(void){
 while(1);
 }
