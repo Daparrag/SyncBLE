@@ -13,6 +13,7 @@
 *
 */
 #include <chandler.h>
+#include "debug_multnodeFW.h"
 
 
 #define SEG_DELAY 0x03E8 /*1seg delay*/
@@ -148,7 +149,7 @@ CHADLE_Status CH_create_connection_BLE(void *connect_config,
 
 CHADLE_Status CH_set_discovery_specific_BLE(void * dicovery_config){/*this is used for receive advertisements called only by limited discoverable devices*/
   
-     return CHADLE_SUCCESS;
+    return CHADLE_SUCCESS; /*Fixme: not yet implemented*/
 }
 
 
@@ -163,7 +164,8 @@ CHADLE_Status CH_set_discovery_specific_BLE(void * dicovery_config){/*this is us
 
 CHADLE_Status CH_set_discovery_limited_BLE(void * dicovery_config){/*this is used for receive advertisements called by an specific client identified by an UUID*/
 
-     return CHADLE_SUCCESS;
+     return CHADLE_SUCCESS; /*Fixme: not yet implemented*/
+
 }
 
 

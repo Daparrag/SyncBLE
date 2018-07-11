@@ -7,7 +7,7 @@
 
 /**********************Local Variables***********************/
 uint16_t service_handle, dev_name_char_handle, appearance_char_handle;
-uint8_t  bnrg_expansion_board =  IDB04A1;
+uint8_t  bnrg_expansion_board =  IDB05A1;
 uint8_t service_list_init=0;            /*!< flag used to initialized the service attribute list */
 
 static int name_size;
@@ -54,6 +54,7 @@ int APP_BLE_GET_VERSION(uint8_t *hwVersion, uint16_t *fwVersion){
     *fwVersion |= lmp_pal_subversion & 0xF;               // Patch Version Number
   }
 
+  //HCI_Isr_Event_Handler_CB();
   //HCI_Process(); // To receive the BlueNRG EVT
   HCI_Get_Event_CB();
   HCI_Packet_Release_Event_CB();
@@ -96,10 +97,27 @@ APP_Status APP_Init_BLE(void){/*can be used by any application*/
   APP_BLE_GET_VERSION(&hwVersion, &fwVersion);
    BlueNRG_RST();
    
+ 
     if (hwVersion > 0x30) { 
     bnrg_expansion_board = IDB05A1; 
   	}
 
+#if defined (MULTINODE)  
+    uint8_t mode = 0x03;
+    
+    ret = aci_hal_write_config_data(CONFIG_DATA_MODE_OFFSET,
+                                  0x01,
+                                  &mode);    
+
+        if (ret!= BLE_STATUS_SUCCESS)
+        {
+          return APP_ERROR;
+        }
+    
+#endif  
+    
+    
+    
   ret = aci_hal_write_config_data(CONFIG_DATA_PUBADDR_OFFSET, CONFIG_DATA_PUBADDR_LEN, PTR_DEVICE_BDADDR);
 
 	if (ret != BLE_STATUS_SUCCESS)
@@ -130,7 +148,7 @@ APP_Status APP_Init_BLE(void){/*can be used by any application*/
                                BONDING);
                                
   /* Set output power level */
-  aci_hal_set_tx_power_level(1, 5);
+  aci_hal_set_tx_power_level(1, 7);
   
   return APP_SUCCESS;
 }

@@ -312,7 +312,11 @@ SERV_Status SH_Associate_list_att_handler_CB(connection_t * connection, uint8_t 
   return SERV_SUCCESS;  
                     
 }
-                                      
+       
+
+
+
+
 /**
 * @brief  This is a control function used in case of service handler error.
 * @retval none.

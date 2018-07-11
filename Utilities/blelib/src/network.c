@@ -13,6 +13,7 @@
 #include <network.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "debug_multnodeFW.h"
 
 /****************** Variable Declaration **************************/
 net_type_t    net_mode =  NET_CONNECTED;/*the default connection mode*/
@@ -1263,6 +1264,8 @@ uint16_t NET_get_chandler_by_index(uint8_t _index){
 }
 
 
+
+
 /**
   * @brief  this fuction validates of the connection handler correspound to some 
   * connection already stablished 
@@ -1272,13 +1275,15 @@ uint16_t NET_get_chandler_by_index(uint8_t _index){
 
 uint8_t NET_valiadate_chandler(uint16_t _chandler)
 {
-  uint8_t i;
+ 
   uint8_t ret=FALSE;
   uint8_t n_connections;
   
   n_connections = network.num_device_connected;
 
 #ifdef MULTINODE
+uint8_t i;
+
   for(i=0; i<n_connections; i++)
   {
     if (network.mMSConnection[i].Connection_Handle == _chandler)
@@ -1292,12 +1297,77 @@ uint8_t NET_valiadate_chandler(uint16_t _chandler)
 }
 
 /**
-  * @brief  this fuction return  the GAP role of the device 
-  * connection already stablished 
-  * @param  none 
+  * @brief  this fuction returns the index associated to a conn_handler  
+  * @param  uint16_t conn_handler: connection handler paramiter
+  * @param  uint8_t * idx: pointer to a idx variable
   * @retval dv_type_t role of the device 
   */
 dv_type_t NET_get_device_role(void)
 {
   return  device_role;
+}
+
+
+
+/**
+  * @brief  this fuction returns the index associated to a conn_handler  
+  * @param  uint16_t conn_handler: connection handler paramiter
+  * @param  uint8_t * idx: pointer to a idx variable
+  * @retval uint8_t ret : 0 if the connection handler is not associated to any connection otherwise 1 
+  */
+uint8_t NET_get_conn_index_by_chandler(uint16_t conn_handler, uint8_t * idx)
+{
+      uint8_t ret=0;
+      
+#ifdef MULTINODE
+      uint8_t i;
+      uint8_t n_connections = network.num_device_connected;
+      
+      for(i=0; i<n_connections; i++)
+      {
+        if (network.mMSConnection[i].Connection_Handle == conn_handler)
+        {
+           *idx = i;
+            ret = 1;
+        }
+      }
+#else
+      if (network.mMSConnection.Connection_Handle == conn_handler){
+          *idx = 0;
+           ret = 1;
+      }
+#endif 
+      
+  return ret;    
+}
+
+/**
+  * @brief  this fuction returns the link status per connection  
+  * @param  uint8_t link_status [8]: used to retrieve the link status per connection 
+  * @param  uint16_t conn_handler[8]:connection handler associated to each connection
+  * @retval none.
+  */
+void NET_get_conn_link_status(uint8_t link_status[8], uint16_t conn_handler[8]){
+
+  aci_hal_get_link_status(link_status,conn_handler);
+
+}
+
+
+/**
+  * @brief link return all the connections associated to the network  
+  * @param  uint8_t link_status [8]: used to retrieve the link status per connection 
+  * @param  uint16_t conn_handler[8]:connection handler associated to each connection
+  * @retval none.
+  */
+void NET_get_all_connections( connection_t * conn [] ){
+#if defined(MULTINODE)
+  uint8_t i; 
+  uint8_t ndevices = NET_get_num_connections();
+  
+  for (i=0; i < ndevices; i++)
+    (conn)[i]= &network.mMSConnection[i];
+#else
+    (conn)[0]=&network.mMSConnection;
+#endif    
 }
