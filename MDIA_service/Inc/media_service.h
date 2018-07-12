@@ -11,6 +11,13 @@
 
 /*config media service*/
 
+#if defined (USE_ONLY_PTP)
+//"Your are USING ONLY PTP please consider that this mode is used only \
+//to sychronize clocks. Therefore you should put a timestamp to all your packets before \
+//to be transmited" 
+#pragma message("Your are USING ONLY PTP please consider that this mode is used only to sychronize clocks. Therefore you should put a timestamp to all your packets before to be transmited")
+#endif
+
 #if defined (MEDIA_SERVER)
 #define CTRL_SERVER
 #define PTP_SERVER

@@ -7,7 +7,9 @@
 #include "media_service.h"
 #include "ptp_interrupt.h"
 #include "stm32f4xx_nucleo_add_led.h"
+#ifdef DEBUG
 #include "debug.h"
+#endif
 
 
 

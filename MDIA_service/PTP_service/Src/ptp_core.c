@@ -166,8 +166,10 @@ static void clear_flags()
   /*only if dynamic mode*/
   
 #if defined (PTP_SERVER) 
+#if !defined(USE_ONLY_PTP)
   if(ptp_mode==PTP_DYNAMIC)
   HAL_NVIC_SetPendingIRQ(PTP_NEW_SYNC_RESULT_SW_IRQn);/*SET A PENDING INTERRUPT TO THE CONTROL SERVICE TO UPDATE PARAMETERS*/
+#endif
  /* enable_test_fun();*/
 #endif
 }
@@ -569,6 +571,16 @@ void init_ptp_profile(app_profile_t * profile){
   bleptp_service.service_type=SECONDARY_SERVICE;
   bleptp_service.max_attr_records=6;
   /*copy the and associate the service to the BLE application profile*/
+#if defined (PTP_SERVER) 
+  bleptp_service.serv_exposed = FALSE;
+  bleptp_service.serv_to_disc = TRUE;
+  
+#elif defined (PTP_CLIENT) 
+  bleptp_service.serv_exposed = TRUE;
+  bleptp_service.serv_to_disc = FALSE;
+#endif  
+  
+  
   ret = APP_add_BLE_Service(profile,&bleptp_service);
   
   if(ret!=APP_SUCCESS) ptp_error_handler();
@@ -582,6 +594,16 @@ void init_ptp_profile(app_profile_t * profile){
   bleptp_tx_att.encryKeySize=16;
   bleptp_tx_att.isVariable=1;
   /*copy and associate the ptp_TX_attribute to the ptp service*/
+  
+#if defined (PTP_SERVER) 
+  bleptp_tx_att.char_exposed = FALSE;
+  bleptp_tx_att.char_to_disc = TRUE;
+#elif defined (PTP_CLIENT) 
+  bleptp_tx_att.char_exposed = TRUE;
+  bleptp_tx_att.char_to_disc = FALSE;
+#endif  
+  
+  
    ret= APP_add_BLE_attr(&bleptp_service,&bleptp_tx_att);
     if(ret!=APP_SUCCESS)ptp_error_handler();
   /*create the ptp_RX_attribute*/
@@ -593,6 +615,15 @@ void init_ptp_profile(app_profile_t * profile){
   bleptp_rx_att.gattEvtMask = GATT_NOTIFY_ATTRIBUTE_WRITE;
   bleptp_rx_att.encryKeySize=16;
   bleptp_rx_att.isVariable=1;
+  
+  
+  #if defined (PTP_SERVER) 
+  bleptp_rx_att.char_exposed = FALSE;
+  bleptp_rx_att.char_to_disc = TRUE;
+#elif defined (PTP_CLIENT) 
+  bleptp_rx_att.char_exposed = TRUE;
+  bleptp_rx_att.char_to_disc = FALSE;
+#endif  
   /*copy and associate the RX_attribute to a service*/
   ret= APP_add_BLE_attr(&bleptp_service,&bleptp_rx_att); 
     if(ret!=APP_SUCCESS)ptp_error_handler();
@@ -630,7 +661,9 @@ CLOCK_RESET;
   BlueNRG_ConnInterval_Init(10); /*this must be define by the top API*/
   #endif
   #if defined(PTP_SERVER)
+    #if !defined(USE_ONLY_PTP)
   if(ptp_mode == PTP_DYNAMIC) ptp_to_ctrl_init(); /*INITIALIZES THE FEEDBACK INTERRUPT TO THE MEDIA SYNC SERVICE*/
+    #endif
 #endif
 CLOCK_INIT;
    sync_success=TRUE;

@@ -51,7 +51,11 @@ num_service = connection->Node_profile->n_service;
 		return SERV_SUCCESS;
 	}
 
-
+        if(service->serv_to_disc == FALSE){
+          serv_control_flags->services_to_find-=1;
+          return SERV_NOT_APPL;
+        
+        }
 	/*< at this point is possible to send the service discover request >*/
 	ret = aci_gatt_disc_prim_service_by_uuid(connection->Connection_Handle,
                                                  service->service_uuid_type,
@@ -115,6 +119,10 @@ SERV_Status DSCV_primary_char_by_uuid(connection_t * connection)
       return SERV_ERROR;
     }
     
+    
+    if(charac->char_to_disc == FALSE){
+      return SERV_NOT_APPL;
+    }
     
     
    /*< at this point is possible to send the characteristic discover request >*/

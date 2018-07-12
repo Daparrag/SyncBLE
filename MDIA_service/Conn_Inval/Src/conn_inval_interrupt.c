@@ -4,9 +4,11 @@
 #include "clock_interface.h"
 #include "ptp_interrupt.h"
 #include "stm32f4xx_nucleo_add_led.h"
+#ifdef DEBUG
 #include "debug.h"
+#endif
 #include "conn_inval_interrupt.h"
-#include "bluevoice_sync_service.h"
+//#include "bluevoice_sync_service.h"
 
 
 #define TEST_CONN_INTVAL 0
@@ -105,9 +107,9 @@ void BlueNRG_ConnInterval_IRQ_Callback(void)
         
         BSP_ADD_LED_On(ADD_LED8);
     }
-BLUEVOICE_Cinterval_Process_2_Ext(connection_id);/*USE THIS only for effciency improviment otherwise use BLUEVOICE_Cinterval_Process_Ext(connection_id); */
+//BLUEVOICE_Cinterval_Process_2_Ext(connection_id);/*USE THIS only for effciency improviment otherwise use BLUEVOICE_Cinterval_Process_Ext(connection_id); */
 #else   
-  BLUEVOICE_Cinterval_Process_2_Ext(connection_id);/*USE THIS only for effciency improviment otherwise use BLUEVOICE_Cinterval_Process_Ext(connection_id); */
+  //BLUEVOICE_Cinterval_Process_2_Ext(connection_id);/*USE THIS only for effciency improviment otherwise use BLUEVOICE_Cinterval_Process_Ext(connection_id); */
  // BLUEVOICE_Cinterval_Process_Ext(connection_id);  
   //Media_cinterval_IRQ_Handler(connection_id);
 #endif  

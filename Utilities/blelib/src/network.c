@@ -687,7 +687,7 @@ connection_t * connection;
 			{
 				switch(event->event_type)
 				{
-					case EVT_BLUE_GATT_PROCEDURE_COMPLETE:
+				    	case EVT_BLUE_GATT_PROCEDURE_COMPLETE:
 					{     
                                                 PRINTDEBUG("event_received EVT_BLUE_GATT_PROCEDURE_COMPLETE at time: %d \n", event->ISR_timestamp);
 						evt_gatt_procedure_complete * pr =(evt_gatt_procedure_complete *) event->evt_data; 
@@ -797,12 +797,27 @@ connection_t * connection;
                                                   return NET_SUCCESS;
                                                 }
 						
-						if(serv_ret!=SERV_SUCCESS)
+						if(serv_ret==SERV_ERROR)
 						{
 							PRINTDEBUG(" error occur during the discovery services procedure DSCV_primary_services_by_uuid please check it \n");
 							return NET_ERROR;
-						}
-                       
+                                                        
+						}else if (serv_ret==SERV_NOT_APPL){
+                                                  
+                                                  
+                                                      if(connection->Node_profile->svflags.services_to_find==0 && connection->service_status==ST_SERVICE_DISCOVERY)
+                                                      {
+                                                          connection->Node_profile->svflags.services_success_scanned=1;  
+                                                          connection->service_status = ST_CHAR_DISCOVERY;
+                                                            //network_clean_wait_end_procedure();
+               
+                                                      }
+              
+                                                  
+                                                  return NET_SUCCESS;
+                                                  
+                                                }
+                                        
 						network_set_wait_end_procedure();
 					}
 					break;
@@ -821,7 +836,7 @@ connection_t * connection;
                                               		while(service!=NULL && service->chrflags.char_discovery_success!=0){
                                               			service=service->next_service;
                                               		}
-                                              		if(service==NULL){
+                                              		if(service==NULL){ 
                                               			connection->Node_profile->svflags.attr_success_scanned=1;
                                               			network.num_device_serv_discovery+=1;
                                                                 connection->service_status=ST_DISC_COMPLETED;
@@ -837,11 +852,41 @@ connection_t * connection;
                                                 return NET_SUCCESS;
                                               }
 						
-						if(serv_ret!=SERV_SUCCESS)
+						if(serv_ret==SERV_ERROR)
 						{
 							PRINTDEBUG(" error occur during the discovery characterictics procedure DSCV_primary_char_by_uuid please check it \n");
 							return NET_ERROR;
 						}
+                                              
+                                                if(serv_ret==SERV_NOT_APPL){   
+                                                     /*get the service*/
+                                                            app_service_t * service = connection->Node_profile->services;
+                                                            while(service!=NULL && service->chrflags.char_discovery_success!=0){
+                                                                    service=service->next_service;
+                                                            }
+                                                            if(service==NULL){
+                                                                    connection->Node_profile->svflags.attr_success_scanned=1;
+                                                                    network.num_device_serv_discovery+=1;
+                                                                    connection->service_status=ST_DISC_COMPLETED;
+                                                                    connection->connection_status=ST_STABLISHED;
+                                                            }else{
+                                                                    service->chrflags.char_scanned+=1;
+                                                                    if(service->chrflags.char_scanned==service->chrflags.char_to_scan)
+                                                                    {
+                                                                            service->chrflags.char_discovery_success=1;
+                                                                            
+                                                                            if(service->next_service==NULL){
+                                                                                network.num_device_serv_discovery+=1;
+                                                                                connection->Node_profile->svflags.attr_success_scanned=1;
+                                                                                connection->service_status=ST_DISC_COMPLETED;
+                                                                                connection->connection_status=ST_STABLISHED;     
+                                                                            }
+                                                                    }
+                                                            }
+
+                                                    return NET_SUCCESS;
+                                                  
+                                                }
 
 						network_set_wait_end_procedure();
 					}

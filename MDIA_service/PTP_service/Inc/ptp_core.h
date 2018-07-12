@@ -8,6 +8,8 @@
 #include  "ble_firmware.h"
 #include <osal.h>
 
+#include "media_service.h"
+
 #define PTP_VERSION 0x0
 #define PACKET_ALIVE_MS 0x64 /*200ms*/
 /*Messages_Type*/

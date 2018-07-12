@@ -1101,16 +1101,12 @@ void UPDATE_SYNC_IRQ(){
   */
 void CTRL_update_static_parameters(){
   
-  /* To compute the inter destination delay between multiple receives it is necessa
-   * 
-   *
-   *
-  */  
   uint8_t i;
-  float inter_delay[num_peer_device];
-  float conn_inval[num_peer_device];
   if(num_peer_device==0)return;/*there not connections already stablished*/
-  connection_t * tmp_conn[num_peer_device];
+  
+  float inter_delay[EXPECTED_NODES]={0};
+  float conn_inval[EXPECTED_NODES]={0};
+  connection_t * tmp_conn[EXPECTED_NODES]={0};
   ptp_status_table * tmp_ptp_tbl;
   ctrl_status_entry * tmp_ctrl_entry;
   ctrl_sync_param * tmp_prm;

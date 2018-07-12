@@ -36,6 +36,12 @@ return 0;
 
 void MDIA_init_service(app_profile_t * profile, sync_mode_t mode)
 {	
+#if defined(USE_ONLY_PTP)
+
+  PTP_SET_operation_mode(PTP_DYNAMIC);
+  init_ptp_profile(profile);
+  
+#else 
 	if (service_status != MDIA_DINIT)return;
         
         mdia_mode = mode;
@@ -48,6 +54,7 @@ void MDIA_init_service(app_profile_t * profile, sync_mode_t mode)
           init_ptp_profile(profile);
           
         }
+#endif        
         service_status = MDIA_INIT;	
              
 /*init the TIM4 as clock */
@@ -75,11 +82,15 @@ void MDIA_deinit_service()
   */
 
 void MDIA_start_service(uint8_t npeers){
+#if defined(USE_ONLY_PTP)
+  ptp_Start(npeers);
+#else
 	/* 1.0 Start the control synchronization protocol and/or the ptp_protocol */
 	if(service_status != MDIA_INIT  || !network_get_status())return;
 	Ctrl_Sync_start(npeers,0);
 	if(mdia_mode == DYNAMIC_CONTROL) ptp_Start(npeers);
-	service_status = MDIA_EABLE;
+#endif	
+        service_status = MDIA_EABLE;
 /* the initialization an configuration of the connection interval is delegated to the application */		
 }
 
@@ -94,7 +105,9 @@ void MDIA_start_service(uint8_t npeers){
 void MDIA_run_synchonize(){
 	/*this function send the synchonization signal to all the peer devices*/
 	/**/
-  
+#if defined(USE_ONLY_PTP)  
+   PTP_SYNC();
+#else
   if(mdia_mode == DYNAMIC_CONTROL)
   {
     PTP_SYNC();
@@ -103,7 +116,7 @@ void MDIA_run_synchonize(){
     CTRL_sync();
   
   }
-		
+#endif		
 }
 
 
@@ -141,9 +154,13 @@ void MDIA_get_sync_parameters(media_ctrl_parameters * tmp_sync_parm)
   * @retval : none.
   */
 void MDIA_server_main(){
+#if defined(USE_ONLY_PTP)
+  ptp_server_sync_process_temp_new();
+#else  
 	Ctrl_Sync_server_main();
 if(mdia_mode == DYNAMIC_CONTROL)	
 	ptp_server_sync_process_temp_new();
+#endif
 }
 
 /**
@@ -154,10 +171,16 @@ if(mdia_mode == DYNAMIC_CONTROL)
   */
 
 void MDIA_client_main(){
+#if defined(USE_ONLY_PTP)  
+  ptp_client_sync_process_new_tmp();
+#else    
 	Ctrl_Sync_client_main();
+      
 if(mdia_mode == DYNAMIC_CONTROL)	
 	ptp_client_sync_process_new_tmp();
+#endif
 }
+
 
 /**
   * @brief  MDIA_set_periodic_sync: 
@@ -190,7 +213,7 @@ void MDIA_dable_periodic_sync()
   * @return : none
   */
 void MDIA_update_periodic_sync(uint32_t period){
-PTP_SYNC_update_periodic_sync(period);	
+  PTP_SYNC_update_periodic_sync(period);	
 }
 
 
@@ -211,8 +234,12 @@ void MDIA_eable_periodic_sync()
   * @return : none
   */
 void Media_cinterval_IRQ_Handler (uint8_t connection_id){
+#if defined(USE_ONLY_PTP)
+  PTP_cinterval_IRQ_Handler_idx(connection_id);
+#else  
   Ctrl_Sync_cinterval_IRQ_handler(connection_id);
   if(mdia_mode == DYNAMIC_CONTROL) PTP_cinterval_IRQ_Handler_idx(connection_id);
+#endif
 }
   
 

@@ -14,7 +14,7 @@
 #include <ble_firmware.h>
 #include <stm32f4xx_hal.h>
 #include <app_ble.h>
-#include <debug.h>
+
 
 /*discovery modes*/
 #ifndef GENERAL_DISCOVERY

@@ -183,6 +183,7 @@ APP_Status APP_add_BLE_Service(app_profile_t * profile, app_service_t * service)
       profile->services=service;
     } else if(profile->services!=service){/*if not check that it is not already included*/
         aux_service_addrs = &profile->services;
+        profile->services->next_service=NULL;
        do{/*USED to check if a service was already included to this profile*/
             aux_service_addrs = &((*aux_service_addrs)->next_service);
             if(*aux_service_addrs==service)break;
@@ -191,26 +192,29 @@ APP_Status APP_add_BLE_Service(app_profile_t * profile, app_service_t * service)
        
        if(*aux_service_addrs==NULL){
           *aux_service_addrs = service;/**/
+          service->next_service=NULL;
        }else if(*aux_service_addrs == service)return APP_ERROR;
        
     }else if (profile->services == service)return APP_ERROR; /*if service is already included return error*/
-  /*send the add service command  BULENRG-MS*/
-  ret = aci_gatt_add_serv(service->service_uuid_type,
-                          service->ServiceUUID,
-                          service->service_type,
-                          service->max_attr_records,
-                          &(service->ServiceHandle));
-  if (ret != BLE_STATUS_SUCCESS)
-  {
-    
-    /*remove the service if and error occur*/
-    *aux_service_addrs =NULL;
-    return APP_ERROR;
-  }
-  
+  /*send the add service command  BULENRG-MS (expose the service)*/
+          if(service->serv_exposed==TRUE){
+                ret = aci_gatt_add_serv(service->service_uuid_type,
+                                        service->ServiceUUID,
+                                        service->service_type,
+                                        service->max_attr_records,
+                                        &(service->ServiceHandle));
+                if (ret != BLE_STATUS_SUCCESS)
+                {
+                  
+                  /*remove the service if and error occur*/
+                  *aux_service_addrs =NULL;
+                  return APP_ERROR;
+                }
+          }
   profile->n_service+=1; /*increment the control service counter*/
   profile->svflags.services_to_find+=1;
   profile->svflags.services_success_scanned=0;
+  
  return APP_SUCCESS;
 }
 
@@ -243,24 +247,27 @@ APP_Status APP_add_BLE_attr(app_service_t * service, app_attr_t *attr){
          
     }else if (service->attrs ==  attr )  return APP_ERROR;
     
-   /*send the add attr command  BULENRG-MS*/
-    ret = aci_gatt_add_char(service->ServiceHandle,
-                          attr->charUuidType, 
-                          attr->CharUUID, 
-                          attr->charValueLen, 
-                          attr->charProperties, 
-                          attr->secPermissions,
-                          attr->gattEvtMask,
-                          attr->encryKeySize,
-                          attr->isVariable,
-                          &(attr->CharHandle));
-    
-    if (ret != BLE_STATUS_SUCCESS) {
-      /*delete the attr entry in the service list*/
-      *aux_attr_addrs=NULL;
-      return APP_ERROR;
+   /*send the add attr command  BULENRG-MS (expose this characteristic)*/
+    if(attr->char_exposed==TRUE){
       
-    }  
+          ret = aci_gatt_add_char(service->ServiceHandle,
+                                attr->charUuidType, 
+                                attr->CharUUID, 
+                                attr->charValueLen, 
+                                attr->charProperties, 
+                                attr->secPermissions,
+                                attr->gattEvtMask,
+                                attr->encryKeySize,
+                                attr->isVariable,
+                                &(attr->CharHandle));
+          
+          if (ret != BLE_STATUS_SUCCESS) {
+            /*delete the attr entry in the service list*/
+            *aux_attr_addrs=NULL;
+            return APP_ERROR;
+            
+          } 
+    }
     service->n_attr+=1;
     service->chrflags.char_to_scan+=1;
     service->chrflags.char_discovery_success=0;

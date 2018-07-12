@@ -97,6 +97,8 @@ struct _app_attr_t{/*This is a general attribute definition*/
   uint16_t CharHandle;             /*!< characteristic handle.*/
   uint16_t Associate_CharHandler;   /*!< peer characteristic handle associate to this connection.*/     
   uint8_t n_val;                  /*!< control counter of the number of values associate to this characteristic */
+  uint8_t char_exposed;            /*!< use this flag to expose a characteristic*/  
+  uint8_t char_to_disc;            /*!< use this flag to enable this characteristic to be discover*/ 
   struct _app_attr_t * next_attr;
 };
 
@@ -110,6 +112,8 @@ struct _app_service_t{/*<!This is a general service definition >*/
   uint8_t service_type;                 /*!< Type of service (primary or secondary) >*/
   uint8_t max_attr_records;             /*!< Maximum number of att-records that can be add to this service >*/
   uint8_t n_attr;                       /*!< Control counter of the number of attributes add to this service >*/
+  uint8_t serv_exposed;                 /*!< use this flag to expose a this service*/ 
+  uint8_t serv_to_disc;                 /*!< use this flag to enable service discover*/ 
   struct _app_service_t * next_service;
   app_attr_t * attrs;
 };

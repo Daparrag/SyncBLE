@@ -7,7 +7,9 @@
 #include "media_service.h"
 #include "ptp_core.h"
 #include "clock_interface.h"
+#ifdef DEBUG
 #include "debug.h"
+#endif
 #include "RTCP_core.h"
 
 
