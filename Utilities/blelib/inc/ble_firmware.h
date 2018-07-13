@@ -108,6 +108,7 @@ struct _app_service_t{/*<!This is a general service definition >*/
   char_flags chrflags;                  /*!< Characteristics control flags for a service. >*/
   uint8_t ServiceUUID[16];              /*!< Control service UUID. >*/
   uint16_t ServiceHandle;               /*!< Service handle. >*/
+  uint16_t AssoServHandle;               /*!< Associated Service handle. >*/
   uint8_t service_uuid_type;            /*!< Control service UUID_TYPE. 16 or 128 bits >*/
   uint8_t service_type;                 /*!< Type of service (primary or secondary) >*/
   uint8_t max_attr_records;             /*!< Maximum number of att-records that can be add to this service >*/

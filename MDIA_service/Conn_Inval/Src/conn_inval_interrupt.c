@@ -14,6 +14,7 @@
 #define TEST_CONN_INTVAL 0
 
 static void BlueNRG_Discovery_cinval(void);
+static void BlueNRG_global_discv_cinval(void); /*more generic CI discovery fuct*/
 static void BlueNRG_Discovery_cinval_next_state(disc_status status);
 static struct Dscover_Cinterval dcvr_intv = {0,0,UNITIALIZED};
 static cinval_interrupt_status Conn_intval_state = CONN_INTVAL_UNSTARTED;
@@ -88,40 +89,49 @@ void BlueNRG_ConnInt_Tick(void)
 
 void BlueNRG_ConnInterval_IRQ_Callback(void)
 {
-//#if defined (CINTERVAL_SERVER)  
- // BSP_ADD_LED_On(ADD_LED8);
- //BSP_ADD_LED_Off(ADD_LED8);
-//#endif  
+  
   BlueNRG_ConnIntervalValid = 1;
   HAL_NVIC_DisableIRQ(BNRG_CONN_INTERV_EXTI_IRQn);
   __HAL_GPIO_EXTI_CLEAR_IT(BNRG_CONN_INTERV_IRQ_PIN);
   HAL_NVIC_ClearPendingIRQ(BNRG_CONN_INTERV_EXTI_IRQn);
+  static uint8_t n_conn;
   if(dcvr_intv.status==COMPLETED){
     
  #if (TEST_CONN_INTVAL)   
-    if(connection_id==0){
-    BSP_ADD_LED_On(ADD_LED3);
-    
-    }else if(connection_id==1)
-    {
-        
-        BSP_ADD_LED_On(ADD_LED8);
+    if(connection_id != (n_conn-1)){
+      BSP_ADD_LED_On(ADD_LED3);
+      
+    }else if(connection_id == (n_conn-1)){
+      BSP_ADD_LED_Off(ADD_LED3);
     }
+    
+    
 //BLUEVOICE_Cinterval_Process_2_Ext(connection_id);/*USE THIS only for effciency improviment otherwise use BLUEVOICE_Cinterval_Process_Ext(connection_id); */
 #else   
   //BLUEVOICE_Cinterval_Process_2_Ext(connection_id);/*USE THIS only for effciency improviment otherwise use BLUEVOICE_Cinterval_Process_Ext(connection_id); */
  // BLUEVOICE_Cinterval_Process_Ext(connection_id);  
-  //Media_cinterval_IRQ_Handler(connection_id);
+  Media_cinterval_IRQ_Handler(connection_id);
 #endif  
   
     
 #if defined (CINTERVAL_SERVER)
-    connection_id= !connection_id;
+    connection_id = (connection_id + 1) % n_conn;
+     
 #elif defined (CINTERVAL_CLIENT)
      connection_id=0;
 #endif     
   }else{
-    BlueNRG_Discovery_cinval(); 
+    
+#if defined (CINTERVAL_CLIENT)
+     connection_id=0;
+     BlueNRG_Discovery_cinval_next_state(COMPLETED); 
+#endif
+    
+    if(NET_get_num_connections() !=0 ){
+        n_conn = NET_get_num_connections();
+        BlueNRG_global_discv_cinval(); 
+    }
+    
   }
 
 }
@@ -179,3 +189,35 @@ static void BlueNRG_Discovery_cinval(){
   }
   
 }
+
+static void BlueNRG_global_discv_cinval(){
+/*Please in case of two connections try to use BlueNRG_Discovery_cinval instead*/
+  switch (dcvr_intv.status){
+    case UNITIALIZED:
+      {
+              dcvr_intv.time1 = GET_CLOCK;
+              BlueNRG_Discovery_cinval_next_state(WAIT_SEC_TIME);
+
+      }
+      break;
+      case WAIT_SEC_TIME:
+      {
+         dcvr_intv.time2 = GET_CLOCK;
+         {
+              if( ( MICRO2MILSECONDS(dcvr_intv.time2 - dcvr_intv.time1)) <= 8.5f ){
+                  /*this is one intermedle connection wait until the last connection*/
+                    BlueNRG_Discovery_cinval_next_state(UNITIALIZED);    
+                  
+              }else{
+                  /*this only hapend in the case in which the last coonnection has been occured*/
+                  /*therefore, the the next connection will ve the connection 1 because currently we are on connection 0*/
+                  connection_id = 1;
+                   BlueNRG_Discovery_cinval_next_state(COMPLETED); 
+              }
+         }
+      }
+  }
+  
+
+}
+

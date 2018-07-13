@@ -705,6 +705,7 @@ connection_t * connection;
 							PRINTDEBUG("An Error occur in the interchange process because an invalid connection handler has been received please check it. \n");
 							return NET_ERROR;
 						}
+                                               
                                                 
                                                 if(connection->Node_profile->svflags.services_to_find==0 && connection->service_status==ST_SERVICE_DISCOVERY)
                                                 {

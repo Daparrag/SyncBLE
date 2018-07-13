@@ -55,7 +55,7 @@ typedef enum{
 #define BNRG_CONN_INTERV_EXTI_PORT              BNRG_CONN_INTERV_IRQ_PORT
 #define BNRG_CONN_INTERV_EXTI_PRIORITY          0x0A
 
-#define BNRG_CONN_INTERVAL_MASK_TIME                         (5) /*Mask time for connection interval in ms*/
+#define BNRG_CONN_INTERVAL_MASK_TIME                         (6) /*Mask time for connection interval in ms*/
 
 
 

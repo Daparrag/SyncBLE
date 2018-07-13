@@ -121,6 +121,8 @@ uint8_t ptp_send_ptp_packet(uint16_t chandler,
 static void clear_flags(void);
 static void send_Cinterval_pkt_client(ptp_status_table * st_sync_node);
 static void send_Cinterval_pkt_server(ptp_status_table * st_sync_node);
+static void ptp_update_status(ptp_state_t st);
+
 
 
 
@@ -340,7 +342,7 @@ uint8_t * p;
 
 	p=data;
 
-		hdr->ptp_type =   (p[0] & 0xF);
+        hdr->ptp_type =   (p[0] & 0xF);
         hdr->ptp_version= (p[0] >> 0x3) & 0x1;
         hdr->domain_number  = (p[0] >> 0x4) & 0x1;
         hdr->control_field = (p[0]>>0x5)& 0x1;
@@ -487,7 +489,13 @@ static void input_packet_process( uint16_t chandler,
     if(ret==0) ptp_error_handler();
     /*process the packet*/
     /*ptp_client had received 1. sync | 2. followup | 3. delay_resp*/
-    if(rptp_hdr.ptp_type==SYNC && st->ptp_state==PTP_INIT){
+    if(rptp_hdr.ptp_type==SYNC ){
+      
+          if(st->ptp_state==PTP_UNITIALIZED){
+                st->ptp_state = PTP_INIT;
+          }else if (st->ptp_state!=PTP_INIT){
+              return;
+          }
       /*PROCESS SYNC PACKET*/
       sync_success=FALSE;
 #if PRINT_PTP                                
@@ -662,7 +670,7 @@ CLOCK_RESET;
   #endif
   #if defined(PTP_SERVER)
     #if !defined(USE_ONLY_PTP)
-  if(ptp_mode == PTP_DYNAMIC) ptp_to_ctrl_init(); /*INITIALIZES THE FEEDBACK INTERRUPT TO THE MEDIA SYNC SERVICE*/
+      if(ptp_mode == PTP_DYNAMIC) ptp_to_ctrl_init(); /*INITIALIZES THE FEEDBACK INTERRUPT TO THE MEDIA SYNC SERVICE*/
     #endif
 #endif
 CLOCK_INIT;
@@ -935,6 +943,18 @@ BSP_ADD_LED_Off(ADD_LED2);
 
 }
 
+/**
+  * @brief  ptp_update_status: This fuction update the ptp status for all connections.
+  * @param	ptp_state_t  : ptp state to update.
+  * @return : none
+  */
+static void ptp_update_status(ptp_state_t st){
+  uint8_t i;
+  for (i=0; i < max_number_entries; i++){
+      PTPStatus[i].ptp_state = st;
+  }
+
+}
 
 
 /**
@@ -947,6 +967,16 @@ void send_Cinterval_pkt_server(ptp_status_table * st_sync_node){
 uint8_t ret;
   if(sync_success!=1){
     switch(st_sync_node->ptp_state){
+      case PTP_UNITIALIZED:
+        {
+          /*wait until connection 0*/
+              if(st_sync_node->node_id == (max_number_entries-1)){
+                  BSP_ADD_LED_On(ADD_LED3);
+                  BSP_ADD_LED_Off(ADD_LED3);
+                  ptp_update_status(PTP_INIT);
+              } 
+      }
+      break;
       case PTP_INIT:
       {
         st_sync_node->local_notify_enable_flag=ptp_enable_notify(st_sync_node->Chandler);
@@ -1009,7 +1039,7 @@ BSP_ADD_LED_Off(ADD_LED2);
         }
       }
       break;
-
+  
     }
 
   }

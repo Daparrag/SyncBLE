@@ -113,7 +113,19 @@ APP_Status APP_Init_BLE(void){/*can be used by any application*/
         {
           return APP_ERROR;
         }
+#else
+        
+uint8_t mode = 0x01;
     
+    ret = aci_hal_write_config_data(CONFIG_DATA_MODE_OFFSET,
+                                  0x01,
+                                  &mode);    
+
+        if (ret!= BLE_STATUS_SUCCESS)
+        {
+          return APP_ERROR;
+        }
+        
 #endif  
     
     

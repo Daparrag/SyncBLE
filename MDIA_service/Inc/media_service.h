@@ -15,7 +15,13 @@
 //"Your are USING ONLY PTP please consider that this mode is used only \
 //to sychronize clocks. Therefore you should put a timestamp to all your packets before \
 //to be transmited" 
-#pragma message("Your are USING ONLY PTP please consider that this mode is used only to sychronize clocks. Therefore you should put a timestamp to all your packets before to be transmited")
+#pragma message("**************ATTENTION****************")
+#pragma message("Your are USING ONLY PTP please consider that this mode is used only to sychronize clocks")
+#pragma message("Therefore you should put a timestamp to all packets before to be transmit it.")
+#pragma message("**************ATTENTION****************")
+
+
+
 #endif
 
 #if defined (MEDIA_SERVER)
